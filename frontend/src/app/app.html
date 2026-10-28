@@ -1,0 +1,36 @@
+<header class="cabecera">
+  <div class="contenedor cabecera__contenido">
+    <a class="marca" [routerLink]="auth.estaLogueado() ? '/inicio' : '/login'">
+      <img class="marca__icono" src="grape.png" alt="" width="36" height="36" />
+      <span>Purplegram</span>
+    </a>
+
+    <nav class="navegacion" aria-label="Navegación principal">
+      @if (auth.usuarioActual(); as usuario) {
+        <span class="navegacion__saludo">
+          <img class="avatar avatar--chico" [src]="avatar()" alt="Tu foto de perfil" />
+          <span>Hola, <strong>&#64;{{ usuario.nombreUsuario }}</strong></span>
+        </span>
+        <a class="boton boton--secundario boton--chico" routerLink="/inicio" routerLinkActive="activo">
+          Mi perfil
+        </a>
+        <button class="boton boton--primario boton--chico" type="button" (click)="salir()">Salir</button>
+      } @else {
+        <a class="boton boton--secundario boton--chico" routerLink="/login" routerLinkActive="activo">
+          Ingresar
+        </a>
+        <a class="boton boton--primario boton--chico" routerLink="/registro" routerLinkActive="activo">
+          Crear cuenta
+        </a>
+      }
+    </nav>
+  </div>
+</header>
+
+<main class="contenedor pantalla">
+  <router-outlet />
+</main>
+
+<footer class="pie">
+  <div class="contenedor">Purplegram · Sprint 1 · Angular + NestJS</div>
+</footer>

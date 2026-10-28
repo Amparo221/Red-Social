@@ -1,0 +1,371 @@
+/* ============================================================
+   Purplegram · estilos globales
+   Paleta púrpura clara inspirada en el icono (racimo de uvas).
+   Las variables de :root se reutilizan desde todos los componentes.
+   ============================================================ */
+
+:root {
+  /* Escala de lilas: del fondo casi blanco al púrpura de los títulos. */
+  --lila-50: #faf5ff;
+  --lila-100: #f3e8ff;
+  --lila-200: #e9d5ff;
+  --lila-300: #d8b4fe;
+  --lila-400: #c084fc;
+  --lila-500: #a855f7;
+  --lila-600: #9333ea;
+  --lila-700: #7e22ce;
+  --uva-900: #3b0764;
+  /* Único acento verde: la hojita del icono, para los mensajes de éxito. */
+  --hoja-500: #22c55e;
+
+  --blanco: #ffffff;
+  --texto: #3b0764;
+  --texto-suave: #6b21a8;
+  --error: #b91c1c;
+  --error-fondo: #fee2e2;
+  --error-borde: #fecaca;
+  --ok: #15803d;
+  --ok-fondo: #dcfce7;
+  --ok-borde: #bbf7d0;
+
+  --radio: 16px;
+  --radio-chico: 10px;
+  --sombra: 0 10px 30px rgba(147, 51, 234, 0.15);
+  --fuente:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--fuente);
+  color: var(--texto);
+  background: linear-gradient(160deg, var(--lila-50) 0%, var(--lila-100) 45%, var(--lila-200) 100%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* El shell ocupa toda la altura para que el pie quede abajo. */
+app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.5rem;
+  color: var(--lila-700);
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+}
+
+p {
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--lila-600);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--lila-700);
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 3px solid var(--lila-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- layout ---------- */
+.contenedor {
+  width: min(1080px, 100% - 2rem);
+  margin-inline: auto;
+}
+
+.pantalla {
+  flex: 1;
+  padding: 2.5rem 0 3rem;
+}
+
+/* ---------- tarjetas ---------- */
+.tarjeta {
+  width: 100%;
+  padding: 2rem;
+  background: var(--blanco);
+  border: 1px solid var(--lila-200);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+.tarjeta--angosta {
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.tarjeta--media {
+  max-width: 580px;
+  margin-inline: auto;
+}
+
+.tarjeta__encabezado {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.tarjeta__encabezado p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--texto-suave);
+}
+
+.tarjeta__pie {
+  margin: 1.5rem 0 0;
+  font-size: 0.95rem;
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.logo {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 0.75rem;
+}
+
+/* ---------- formularios ---------- */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1.1rem;
+}
+
+.campo__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.campo__control {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  font: inherit;
+  color: var(--texto);
+  background: var(--lila-50);
+  border: 1.5px solid var(--lila-300);
+  border-radius: var(--radio-chico);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    background 0.15s;
+}
+
+.campo__control::placeholder {
+  color: #b9a5d6;
+}
+
+.campo__control:focus {
+  outline: none;
+  background: var(--blanco);
+  border-color: var(--lila-500);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
+}
+
+.campo__control[aria-invalid='true'] {
+  background: #fff5f5;
+  border-color: var(--error);
+}
+
+textarea.campo__control {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.campo__ayuda {
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.campo__error {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--error);
+}
+
+.campo__contador {
+  font-size: 0.78rem;
+  color: var(--texto-suave);
+  text-align: right;
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1rem;
+}
+
+@media (max-width: 520px) {
+  .fila {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- botones ---------- */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.3rem;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.05s;
+}
+
+.boton:hover {
+  text-decoration: none;
+}
+
+.boton:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.boton--primario {
+  color: var(--blanco);
+  background: var(--lila-500);
+  box-shadow: 0 6px 16px rgba(168, 85, 247, 0.35);
+}
+
+.boton--primario:hover:not(:disabled) {
+  color: var(--blanco);
+  background: var(--lila-600);
+}
+
+.boton--secundario {
+  color: var(--lila-700);
+  background: var(--blanco);
+  border-color: var(--lila-300);
+}
+
+.boton--secundario:hover:not(:disabled) {
+  color: var(--lila-700);
+  background: var(--lila-100);
+  border-color: var(--lila-400);
+}
+
+.boton--chico {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.boton--bloque {
+  width: 100%;
+}
+
+.boton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ---------- alertas ---------- */
+.alerta {
+  padding: 0.8rem 1rem;
+  margin-bottom: 1.2rem;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+  border-radius: var(--radio-chico);
+}
+
+.alerta p {
+  margin: 0;
+}
+
+.alerta ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.alerta li + li {
+  margin-top: 0.25rem;
+}
+
+.alerta--error {
+  color: var(--error);
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+
+.alerta--ok {
+  color: var(--ok);
+  background: var(--ok-fondo);
+  border-color: var(--ok-borde);
+}
+
+/* ---------- avatar ---------- */
+.avatar {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  background: var(--lila-100);
+  border: 2px solid var(--lila-300);
+  border-radius: 50%;
+}
+
+.avatar--chico {
+  width: 32px;
+  height: 32px;
+}
+
+.avatar--grande {
+  width: 112px;
+  height: 112px;
+}
+
+/* ---------- utilidades ---------- */
+.etiqueta {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lila-700);
+  background: var(--lila-100);
+  border-radius: 999px;
+}
+
+.texto-centrado {
+  text-align: center;
+}
+

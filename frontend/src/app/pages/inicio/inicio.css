@@ -1,0 +1,55 @@
+.perfil__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--lila-200);
+}
+
+.perfil__usuario {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--lila-600);
+}
+
+.datos {
+  margin: 1.5rem 0;
+}
+
+.datos__fila {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px dashed var(--lila-200);
+}
+
+.datos__fila:last-child {
+  border-bottom: none;
+}
+
+.datos dt {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--texto-suave);
+}
+
+.datos dd {
+  margin: 0;
+}
+
+@media (max-width: 520px) {
+  .datos__fila {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+}

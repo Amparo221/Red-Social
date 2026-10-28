@@ -1,0 +1,5 @@
+/* La tarjeta de login no necesita estilos propios más allá del ancho: el
+   resto del look sale de los estilos globales (styles.css). */
+:host {
+  display: block;
+}

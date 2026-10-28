@@ -1,0 +1,11 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 96 96"
+  role="img"
+  aria-label="Avatar por defecto"
+>
+  <!-- Placeholder para cuando el usuario no tiene foto propia. -->
+  <circle cx="48" cy="48" r="48" fill="#f3e8ff" />
+  <circle cx="48" cy="37" r="15" fill="#c084fc" />
+  <path d="M14 92c0-18.8 15.2-34 34-34s34 15.2 34 34z" fill="#c084fc" />
+</svg>

@@ -1,0 +1,48 @@
+.campo__archivo {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.campo__archivo::file-selector-button {
+  margin-right: 0.75rem;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--lila-700);
+  background: var(--lila-100);
+  border: 1.5px solid var(--lila-300);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.campo__archivo::file-selector-button:hover {
+  background: var(--lila-200);
+}
+
+.vista-previa {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background: var(--lila-50);
+  border: 1px dashed var(--lila-300);
+  border-radius: var(--radio-chico);
+}
+
+.vista-previa img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  background: var(--blanco);
+  border: 2px solid var(--lila-300);
+  border-radius: 50%;
+}
+
+.vista-previa__nombre {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  word-break: break-all;
+}

@@ -1,0 +1,66 @@
+.cabecera {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom: 1px solid var(--lila-200);
+  backdrop-filter: blur(8px);
+}
+
+.cabecera__contenido {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+}
+
+.marca {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--lila-700);
+  text-decoration: none;
+}
+
+.marca:hover {
+  color: var(--lila-600);
+  text-decoration: none;
+}
+
+.marca__icono {
+  width: 36px;
+  height: 36px;
+}
+
+.navegacion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.navegacion__saludo {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+/* Marca el link de la ruta activa. */
+.activo {
+  color: var(--lila-700);
+  background: var(--lila-100);
+  border-color: var(--lila-500);
+}
+
+.pie {
+  padding: 1.5rem 0;
+  font-size: 0.82rem;
+  color: var(--texto-suave);
+  text-align: center;
+}

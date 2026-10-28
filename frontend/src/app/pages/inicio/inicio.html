@@ -1,0 +1,47 @@
+@if (usuario(); as usuario) {
+  @if (recienRegistrado) {
+    <div class="alerta alerta--ok" role="status">
+      ¡Cuenta creada! Ya estás dentro de Purplegram.
+    </div>
+  }
+
+  <section class="tarjeta tarjeta--media perfil">
+    <div class="perfil__encabezado">
+      <img
+        class="avatar avatar--grande"
+        [src]="avatar()"
+        [alt]="'Foto de perfil de ' + usuario.nombreUsuario"
+      />
+      <div>
+        <h1>{{ usuario.nombre }} {{ usuario.apellido }}</h1>
+        <p class="perfil__usuario">&#64;{{ usuario.nombreUsuario }}</p>
+        <span class="etiqueta">{{ usuario.perfil }}</span>
+      </div>
+    </div>
+
+    <dl class="datos">
+      <div class="datos__fila">
+        <dt>Correo</dt>
+        <dd>{{ usuario.correo }}</dd>
+      </div>
+      <div class="datos__fila">
+        <dt>Fecha de nacimiento</dt>
+        <dd>{{ fechaNacimiento() }}</dd>
+      </div>
+      <div class="datos__fila">
+        <dt>Descripción</dt>
+        <dd>{{ usuario.descripcion || 'Todavía no escribiste una descripción.' }}</dd>
+      </div>
+      @if (miembroDesde(); as alta) {
+        <div class="datos__fila">
+          <dt>Miembro desde</dt>
+          <dd>{{ alta }}</dd>
+        </div>
+      }
+    </dl>
+
+    <div class="acciones">
+      <button class="boton boton--secundario" type="button" (click)="salir()">Cerrar sesión</button>
+    </div>
+  </section>
+}
