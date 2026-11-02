@@ -4,9 +4,9 @@ API REST de una red social, desarrollada con **NestJS + MongoDB Atlas + Cloudina
 
 Este repositorio implementa el **Sprint #1 del backend**:
 
-- **Registro de usuarios** (`POST /auth/registro`): validación de los datos, foto de perfil
+- **Registro de usuarios** (`POST /api/auth/registro`): validación de los datos, foto de perfil
   opcional subida a Cloudinary y contraseña encriptada con bcrypt.
-- **Login** (`POST /auth/login`) usando el correo **o** el nombre de usuario.
+- **Login** (`POST /api/auth/login`) usando el correo **o** el nombre de usuario.
 
 > ⚠️ El **JWT (token de sesión) no forma parte de este sprint**: se implementa en el Sprint #4 del
 > backend y lo consume el Sprint #3 del frontend. En
@@ -73,6 +73,15 @@ Archivo `.env` en la raíz del backend (**no se sube al repositorio**, está en 
 | `PORT` | `3000` | Puerto del servidor |
 | `DEFAULT_AVATAR_URL` | `https://res.cloudinary.com/.../default.jpg` | Imagen que se guarda cuando el usuario se registra sin foto |
 
+### En Vercel
+
+El `.env` no viaja al deploy: las mismas variables se cargan una sola vez en
+**Project → Settings → Environment Variables**. No hace falta definir `PORT`
+(la plataforma lo inyecta y `main.ts` ya usa `process.env.PORT`), y `dns.setServers`
+sólo se aplica fuera de Vercel (`if (!process.env.VERCEL)`), porque ahí el
+resolver lo administra la plataforma. La API se publica en `/api/...`: el
+`vercel.json` de la raíz reescribe `/api/(.*)` al servicio `backend`.
+
 ---
 
 ## Estructura del proyecto
@@ -124,7 +133,7 @@ backend/
 
 ```
 Cliente (Postman / Angular)
-   │  POST /auth/registro   (multipart/form-data)
+   │  POST /api/auth/registro   (multipart/form-data)
    ▼
 main.ts ....................... CORS + ValidationPipe global
    ▼
@@ -339,7 +348,11 @@ constructor(private readonly configService: ConfigService) {
 
 ## Endpoints
 
-### `POST /auth/registro`
+> Todas las rutas están montadas bajo **`/api`** (`app.setGlobalPrefix('api')` en `src/main.ts`),
+> porque en Vercel el rewrite `/api/(.*)` del `vercel.json` raíz entrega la request al servicio
+> `backend` **sin recortar el path**. En desarrollo es lo mismo: `http://localhost:3000/api/...`.
+
+### `POST /api/auth/registro`
 
 `Content-Type: multipart/form-data` (porque puede incluir el archivo `imagen`).
 
@@ -372,7 +385,7 @@ Respuesta **201**:
 }
 ```
 
-### `POST /auth/login`
+### `POST /api/auth/login`
 
 `Content-Type: application/json`
 
@@ -444,7 +457,7 @@ la variable de entorno: no hay que tocar código.
 **1. Registro sin imagen → 201** (debe traer `DEFAULT_AVATAR_URL`)
 
 ```bash
-curl -X POST http://localhost:3000/auth/registro \
+curl -X POST http://localhost:3000/api/auth/registro \
   -F "nombre=Ana" -F "apellido=Moreno" -F "correo=ana@correo.com" \
   -F "nombreUsuario=anamoreno" -F "password=Segura123" \
   -F "fechaNacimiento=1998-05-20" -F "descripcion=Hola!"
@@ -453,7 +466,7 @@ curl -X POST http://localhost:3000/auth/registro \
 **2. Registro con imagen → 201** (la URL debe ser de Cloudinary)
 
 ```bash
-curl -X POST http://localhost:3000/auth/registro \
+curl -X POST http://localhost:3000/api/auth/registro \
   -F "nombre=Beto" -F "apellido=Díaz" -F "correo=beto@correo.com" \
   -F "nombreUsuario=betodiaz" -F "password=Segura123" \
   -F "fechaNacimiento=1995-01-10" -F "imagen=@C:/ruta/foto.jpg"
@@ -462,7 +475,7 @@ curl -X POST http://localhost:3000/auth/registro \
 **3. Correo o usuario repetido → 409**
 
 ```bash
-curl -X POST http://localhost:3000/auth/registro \
+curl -X POST http://localhost:3000/api/auth/registro \
   -F "nombre=Ana" -F "apellido=Moreno" -F "correo=ana@correo.com" \
   -F "nombreUsuario=otro" -F "password=Segura123" -F "fechaNacimiento=1998-05-20"
 ```
@@ -470,7 +483,7 @@ curl -X POST http://localhost:3000/auth/registro \
 **4. Datos inválidos → 400** (mensajes por campo: contraseña débil, correo inválido, fecha mal formada)
 
 ```bash
-curl -X POST http://localhost:3000/auth/registro \
+curl -X POST http://localhost:3000/api/auth/registro \
   -F "nombre=Ana" -F "apellido=Moreno" -F "correo=no-es-correo" \
   -F "nombreUsuario=ana" -F "password=debil" -F "fechaNacimiento=ayer"
 ```
@@ -478,7 +491,7 @@ curl -X POST http://localhost:3000/auth/registro \
 **5. Archivo que no es imagen → 400**
 
 ```bash
-curl -X POST http://localhost:3000/auth/registro \
+curl -X POST http://localhost:3000/api/auth/registro \
   -F "nombre=Ana" -F "apellido=Moreno" -F "correo=ana2@correo.com" \
   -F "nombreUsuario=ana2" -F "password=Segura123" -F "fechaNacimiento=1998-05-20" \
   -F "imagen=@C:/ruta/documento.pdf"
@@ -487,17 +500,17 @@ curl -X POST http://localhost:3000/auth/registro \
 **6. Login con nombre de usuario / con correo → 200**
 
 ```bash
-curl -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" \
+curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" \
   -d '{"identificador":"anamoreno","password":"Segura123"}'
 
-curl -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" \
+curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" \
   -d '{"identificador":"ana@correo.com","password":"Segura123"}'
 ```
 
 **7. Contraseña incorrecta o usuario inexistente → 401**
 
 ```bash
-curl -X POST http://localhost:3000/auth/login -H "Content-Type: application/json" \
+curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" \
   -d '{"identificador":"anamoreno","password":"Incorrecta1"}'
 ```
 

@@ -5,7 +5,7 @@
   aria-label="Avatar por defecto"
 >
   <!-- Placeholder para cuando el usuario no tiene foto propia. -->
-  <circle cx="48" cy="48" r="48" fill="#f3e8ff" />
-  <circle cx="48" cy="37" r="15" fill="#c084fc" />
-  <path d="M14 92c0-18.8 15.2-34 34-34s34 15.2 34 34z" fill="#c084fc" />
+  <circle cx="48" cy="48" r="48" fill="#e0f2fe" />
+  <circle cx="48" cy="37" r="15" fill="#38bdf8" />
+  <path d="M14 92c0-18.8 15.2-34 34-34s34 15.2 34 34z" fill="#38bdf8" />
 </svg>

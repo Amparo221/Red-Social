@@ -4,14 +4,14 @@
   gap: 1.5rem;
   align-items: center;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid var(--lila-200);
+  border-bottom: 1px solid var(--cielo-200);
 }
 
 .perfil__usuario {
   margin: 0 0 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--lila-600);
+  color: var(--cielo-600);
 }
 
 .datos {
@@ -23,7 +23,7 @@
   grid-template-columns: 200px 1fr;
   gap: 1rem;
   padding: 0.65rem 0;
-  border-bottom: 1px dashed var(--lila-200);
+  border-bottom: 1px dashed var(--cielo-200);
 }
 
 .datos__fila:last-child {

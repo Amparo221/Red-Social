@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import type { Credenciales, NuevoUsuario, Usuario } from '../models/usuario.model';
 
 /** Clave con la que se guarda el usuario en el navegador. */
-export const CLAVE_SESION = 'purplegram.usuario';
+export const CLAVE_SESION = 'identibird.usuario';
 
 const URL_AUTH = `${environment.apiUrl}/auth`;
 

@@ -6,17 +6,17 @@ export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   {
     path: 'login',
-    title: 'Purplegram · Ingresar',
+    title: 'IdentiBird · Ingresar',
     loadComponent: () => import('./pages/login/login').then((m) => m.Login),
   },
   {
     path: 'registro',
-    title: 'Purplegram · Crear cuenta',
+    title: 'IdentiBird · Crear cuenta',
     loadComponent: () => import('./pages/registro/registro').then((m) => m.Registro),
   },
   {
     path: 'inicio',
-    title: 'Purplegram · Mi perfil',
+    title: 'IdentiBird · Mi perfil',
     canActivate: [sesionGuard],
     loadComponent: () => import('./pages/inicio/inicio').then((m) => m.Inicio),
   },

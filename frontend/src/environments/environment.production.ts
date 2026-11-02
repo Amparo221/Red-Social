@@ -1,9 +1,10 @@
 /**
  * Configuración para el build de producción (`ng build`).
- * Se cambia por la URL real del backend cuando se despliega; para el TP
- * alcanza con el backend local.
+ * En Vercel el frontend y el backend comparten dominio (proyecto con varios
+ * `services`), así que la URL va relativa a propósito: el rewrite de
+ * `/api/(.*)` en `vercel.json` manda esas requests al servicio `backend`.
  */
 export const environment = {
   produccion: true,
-  apiUrl: 'http://localhost:3000',
+  apiUrl: '/api',
 };

@@ -6,7 +6,10 @@ import { AppModule } from './app.module';
 // En Windows la resolución de los registros SRV que necesita MongoDB Atlas
 // falla con el DNS del sistema (querySrv ECONNREFUSED), así que forzamos los
 // DNS públicos de Google antes de crear la aplicación.
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+// En Vercel el resolver lo administra la plataforma, así que ahí no se toca.
+if (!process.env.VERCEL) {
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
+}
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -26,6 +29,12 @@ async function bootstrap(): Promise<void> {
       transform: true,
     }),
   );
+
+  // Vercel enruta `/api/*` al servicio `backend` del vercel.json SIN recortar el
+  // path (el destino de un rewrite de services no cambia la ruta que ve el
+  // código), así que la API queda montada bajo /api:
+  //   /api/auth/registro  y  /api/auth/login
+  app.setGlobalPrefix('api');
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);

@@ -9,15 +9,15 @@
   font: inherit;
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--lila-700);
-  background: var(--lila-100);
-  border: 1.5px solid var(--lila-300);
+  color: var(--cielo-700);
+  background: var(--cielo-100);
+  border: 1.5px solid var(--cielo-300);
   border-radius: 999px;
   cursor: pointer;
 }
 
 .campo__archivo::file-selector-button:hover {
-  background: var(--lila-200);
+  background: var(--cielo-200);
 }
 
 .vista-previa {
@@ -26,8 +26,8 @@
   align-items: center;
   margin-top: 0.5rem;
   padding: 0.6rem;
-  background: var(--lila-50);
-  border: 1px dashed var(--lila-300);
+  background: var(--cielo-50);
+  border: 1px dashed var(--cielo-300);
   border-radius: var(--radio-chico);
 }
 
@@ -36,7 +36,7 @@
   height: 64px;
   object-fit: cover;
   background: var(--blanco);
-  border: 2px solid var(--lila-300);
+  border: 2px solid var(--cielo-300);
   border-radius: 50%;
 }
 

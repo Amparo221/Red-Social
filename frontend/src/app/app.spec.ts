@@ -20,14 +20,14 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('muestra la marca Purplegram y los accesos sin sesión', async () => {
+  it('muestra la marca IdentiBird y los accesos sin sesión', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
 
     const compilado = fixture.nativeElement as HTMLElement;
     const texto = compilado.textContent ?? '';
 
-    expect(texto).toContain('Purplegram');
+    expect(texto).toContain('IdentiBird');
     expect(texto).toContain('Ingresar');
     expect(texto).toContain('Crear cuenta');
   });

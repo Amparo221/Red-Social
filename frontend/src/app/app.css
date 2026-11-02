@@ -1,10 +1,17 @@
+/* ============================================================
+   Shell de la app: cabecera azul/celeste, navegación y pie.
+   La cabecera es celeste a propósito: el colibrí verde del icono
+   es el que tiene que saltar a la vista.
+   ============================================================ */
+
 .cabecera {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.85);
-  border-bottom: 1px solid var(--lila-200);
-  backdrop-filter: blur(8px);
+  color: var(--marino-900);
+  background: linear-gradient(110deg, var(--cielo-300) 0%, var(--cielo-400) 55%, var(--cielo-500) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.22);
 }
 
 .cabecera__contenido {
@@ -16,26 +23,38 @@
   padding: 0.75rem 0;
 }
 
+/* ---------- marca ---------- */
 .marca {
   display: flex;
   gap: 0.55rem;
   align-items: center;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 800;
-  color: var(--lila-700);
+  color: var(--marino-900);
   text-decoration: none;
 }
 
 .marca:hover {
-  color: var(--lila-600);
+  color: var(--cielo-700);
   text-decoration: none;
 }
 
+/* El colibrí va sobre una chapa blanca para despegarse del celeste. */
 .marca__icono {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
+  padding: 3px;
+  object-fit: contain;
+  background: var(--blanco);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(3, 105, 161, 0.28);
 }
 
+.marca__acento {
+  color: var(--verde-700);
+}
+
+/* ---------- navegación ---------- */
 .navegacion {
   display: flex;
   flex-wrap: wrap;
@@ -48,19 +67,67 @@
   gap: 0.5rem;
   align-items: center;
   font-size: 0.9rem;
-  color: var(--texto-suave);
+  color: var(--marino-900);
 }
 
-/* Marca el link de la ruta activa. */
-.activo {
-  color: var(--lila-700);
-  background: var(--lila-100);
-  border-color: var(--lila-500);
+.navegacion__saludo .avatar {
+  border-color: var(--blanco);
 }
 
+/* Botones dentro de la cabecera: fondo claro, texto azul marino
+   (blanco sobre celeste no alcanza el contraste AA). */
+.cabecera .boton--secundario {
+  color: var(--marino-900);
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+.cabecera .boton--secundario:hover:not(:disabled) {
+  color: var(--cielo-700);
+  background: var(--blanco);
+  border-color: var(--blanco);
+}
+
+.cabecera .boton--primario {
+  color: var(--blanco);
+  background: var(--cielo-700);
+  box-shadow: 0 6px 16px rgba(3, 105, 161, 0.32);
+}
+
+.cabecera .boton--primario:hover:not(:disabled) {
+  color: var(--blanco);
+  background: var(--marino-900);
+}
+
+/* Marca el link de la ruta activa: va después de los botones para ganarle. */
+.cabecera .activo {
+  color: var(--cielo-700);
+  background: var(--blanco);
+  border-color: var(--cielo-700);
+}
+
+.cabecera .boton--primario.activo {
+  color: var(--blanco);
+  background: var(--marino-900);
+  border-color: var(--marino-900);
+}
+
+/* Sobre celeste el anillo de foco azul casi no se ve: lo paso a azul marino. */
+.cabecera :focus-visible {
+  outline-color: var(--marino-900);
+}
+
+/* ---------- pie ---------- */
 .pie {
   padding: 1.5rem 0;
   font-size: 0.82rem;
   color: var(--texto-suave);
   text-align: center;
+  border-top: 1px solid var(--cielo-200);
+  background: rgba(255, 255, 255, 0.55);
 }
+
+.pie strong {
+  color: var(--verde-700);
+}
+

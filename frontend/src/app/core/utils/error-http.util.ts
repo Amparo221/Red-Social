@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import type { ErrorNest } from '../models/usuario.model';
 
 const SIN_CONEXION =
-  'No pudimos conectarnos con el servidor. Verificá que el backend esté corriendo en http://localhost:3000.';
+  'No pudimos conectarnos con el servidor. Revisá tu conexión y volvé a intentarlo.';
 const IMAGEN_DEMASIADO_GRANDE = 'La imagen no puede superar los 5 MB.';
 const CREDENCIALES_INVALIDAS = 'Usuario/correo o contraseña incorrectos.';
 const ERROR_GENERICO = 'Ocurrió un error inesperado. Intentá nuevamente.';

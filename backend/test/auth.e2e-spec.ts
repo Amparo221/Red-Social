@@ -33,6 +33,9 @@ describe('Auth (e2e)', () => {
 
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    // Mismo prefijo que en src/main.ts: la API se publica bajo /api (en Vercel el
+    // rewrite de /api/(.*) entrega la request sin recortar el path).
+    app.setGlobalPrefix('api');
     await app.init();
   });
 
@@ -44,12 +47,12 @@ describe('Auth (e2e)', () => {
     jest.clearAllMocks();
   });
 
-  describe('POST /auth/registro', () => {
+  describe('POST /api/auth/registro', () => {
     it('devuelve 201 cuando los datos son válidos', async () => {
       authServiceMock.registrar.mockResolvedValue({ id: '1', nombreUsuario: 'anamoreno' });
 
       const respuesta = await request(app.getHttpServer())
-        .post('/auth/registro')
+        .post('/api/auth/registro')
         .send(registroValido)
         .expect(201);
 
@@ -59,7 +62,7 @@ describe('Auth (e2e)', () => {
 
     it('devuelve 400 si el correo es inválido o la contraseña es débil', async () => {
       await request(app.getHttpServer())
-        .post('/auth/registro')
+        .post('/api/auth/registro')
         .send({ ...registroValido, correo: 'no-es-un-correo', password: 'debil' })
         .expect(400);
 
@@ -70,7 +73,7 @@ describe('Auth (e2e)', () => {
       authServiceMock.registrar.mockResolvedValue({ id: '2' });
 
       await request(app.getHttpServer())
-        .post('/auth/registro')
+        .post('/api/auth/registro')
         .send({ ...registroValido, correo: '  ANA@Correo.COM ', nombre: '  Ana  ' })
         .expect(201);
 
@@ -84,7 +87,7 @@ describe('Auth (e2e)', () => {
       authServiceMock.registrar.mockResolvedValue({ id: '3' });
 
       await request(app.getHttpServer())
-        .post('/auth/registro')
+        .post('/api/auth/registro')
         .send({ ...registroValido, nombreUsuario: '  AnaMoreno  ', password: '  Segura123  ' })
         .expect(201);
 
@@ -96,12 +99,12 @@ describe('Auth (e2e)', () => {
     });
   });
 
-  describe('POST /auth/login', () => {
+  describe('POST /api/auth/login', () => {
     it('devuelve 200 (no 201) con credenciales válidas', async () => {
       authServiceMock.login.mockResolvedValue({ id: '1', nombreUsuario: 'anamoreno' });
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send({ identificador: 'anamoreno', password: 'Segura123' })
         .expect(200);
 
@@ -110,7 +113,7 @@ describe('Auth (e2e)', () => {
 
     it('devuelve 400 si falta la contraseña', async () => {
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send({ identificador: 'anamoreno' })
         .expect(400);
 
@@ -121,7 +124,7 @@ describe('Auth (e2e)', () => {
       authServiceMock.login.mockResolvedValue({ id: '1' });
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send({ identificador: ' AnaMoreno ', password: '\tSegura123 ' })
         .expect(200);
 

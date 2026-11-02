@@ -1,12 +1,13 @@
-# Purplegram · Frontend (Sprint 1)
+# IdentiBird · Frontend (Sprint 1)
 
 Aplicación Angular del trabajo práctico de red social. Consume la API NestJS de
 `../backend` para el registro y el login: no hay datos mockeados, la sesión sale
 de un `POST` real al backend.
 
 - **Angular 22** (standalone components, zoneless) + **TypeScript**
-- Paleta púrpura clara, con el racimo de uvas de `backend/assets/grape.png` como
-  icono de la app
+- Paleta de azules y celestes con acentos verdes claros, con el colibrí de
+  `backend/assets/hummingbird.png` como icono de la app y cabecera celeste para
+  que el verde del pájaro resalte
 - Estilos globales en `src/styles.css` (variables CSS reutilizadas por todos los
   componentes)
 - Tests unitarios con **Vitest** (el runner que trae Angular 22)
@@ -48,14 +49,23 @@ Otros comandos:
 
 ## Conexión con el backend
 
-La URL base sale de `src/environments/environment.ts` (`apiUrl`), que apunta a
-`http://localhost:3000`. El CORS ya está habilitado en el backend
-(`app.enableCors()` en `backend/src/main.ts`), así que no hace falta proxy.
+La URL base sale de `src/environments/environment.ts` (`apiUrl`). Las rutas del
+backend están montadas bajo `/api` (`app.setGlobalPrefix('api')`), así que:
 
-| Acción   | Método y ruta         | Cuerpo                                                                                                                                                    | Respuesta       |
-| -------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| Registro | `POST /auth/registro` | `multipart/form-data`: `nombre`, `apellido`, `correo`, `nombreUsuario`, `password`, `fechaNacimiento`, `descripcion` (opcional), `imagen` (archivo opcional) | `201` + usuario |
-| Login    | `POST /auth/login`    | JSON: `{ identificador, password }` (`identificador` = correo o nombre de usuario)                                                                         | `200` + usuario |
+| Entorno | `apiUrl` | URL final de un login |
+| ------- | -------------------------- | ------------------------------------ |
+| `ng serve` (development) | `http://localhost:3000/api` | `http://localhost:3000/api/auth/login` |
+| build de producción | `/api` (relativa) | `/api/auth/login` en el mismo dominio |
+
+En producción **no** se usa un host absoluto: el proyecto de Vercel tiene dos
+`services` (`backend` y `frontend`) y el `vercel.json` de la raíz reescribe
+`/api/(.*)` al servicio `backend`, manteniendo el path. Al compartir dominio ya
+no hay CORS de por medio (en desarrollo sí, `app.enableCors()`).
+
+| Acción   | Método y ruta              | Cuerpo                                                                                                                                                    | Respuesta       |
+| -------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| Registro | `POST /api/auth/registro`  | `multipart/form-data`: `nombre`, `apellido`, `correo`, `nombreUsuario`, `password`, `fechaNacimiento`, `descripcion` (opcional), `imagen` (archivo opcional) | `201` + usuario |
+| Login    | `POST /api/auth/login`     | JSON: `{ identificador, password }` (`identificador` = correo o nombre de usuario)                                                                         | `200` + usuario |
 
 Errores que el frontend traduce (`src/app/core/utils/error-http.util.ts`):
 
@@ -83,7 +93,7 @@ Errores que el frontend traduce (`src/app/core/utils/error-http.util.ts`):
 El backend del Sprint 1 todavía **no emite JWT**: lo que devuelve el login es el
 usuario público (`id`, `nombre`, `correo`, `nombreUsuario`, `imagenPerfilUrl`,
 `perfil`, …). El frontend guarda ese objeto en `localStorage` bajo la clave
-`purplegram.usuario` y lo expone como signal (`AuthService.usuarioActual`), así un
+`identibird.usuario` y lo expone como signal (`AuthService.usuarioActual`), así un
 F5 no cierra la sesión.
 
 > `sesionGuard` sólo evita mostrar `/inicio` sin sesión iniciada: **no es
@@ -93,8 +103,8 @@ F5 no cierra la sesión.
 
 ```
 src/
-├─ index.html                     favicon (grape.png) y <title>Purplegram</title>
-├─ styles.css                     paleta púrpura clara + clases base (tarjeta, campo, botón…)
+├─ index.html                     favicon (identibird-32.png / identibird.png) y <title>IdentiBird</title>
+├─ styles.css                     paleta celeste + verde + clases base (tarjeta, campo, botón…)
 ├─ environments/                  apiUrl por entorno (fileReplacements en angular.json)
 └─ app/
    ├─ app.ts / app.html / app.css shell: header con logo, nav y footer
@@ -129,18 +139,39 @@ mensajes son los que se muestran si algo se escapa del lado del cliente):
 
 ## Paleta
 
-| Token        | Color     | Uso                                  |
-| ------------ | --------- | ------------------------------------ |
-| `--lila-50`  | `#faf5ff` | fondo (inicio del degradado)          |
-| `--lila-100` | `#f3e8ff` | superficies, hover                    |
-| `--lila-200` | `#e9d5ff` | bordes suaves                         |
-| `--lila-300` | `#d8b4fe` | bordes de inputs                      |
-| `--lila-400` | `#c084fc` | acentos y foco                        |
-| `--lila-500` | `#a855f7` | botón primario                        |
-| `--lila-600` | `#9333ea` | hover del botón primario, links       |
-| `--lila-700` | `#7e22ce` | títulos                               |
-| `--uva-900`  | `#3b0764` | texto principal                       |
-| `--hoja-500` | `#22c55e` | único verde, para mensajes de éxito   |
+| Token          | Color     | Uso                                         |
+| -------------- | --------- | ------------------------------------------- |
+| `--cielo-50`   | `#f0f9ff` | fondo (inicio del degradado)                 |
+| `--cielo-100`  | `#e0f2fe` | superficies, hover                           |
+| `--cielo-200`  | `#bae6fd` | bordes suaves                                |
+| `--cielo-300`  | `#7dd3fc` | bordes de inputs, inicio de la cabecera      |
+| `--cielo-400`  | `#38bdf8` | acentos, anillo de foco, centro de la cabecera |
+| `--cielo-500`  | `#0ea5e9` | botón primario, fin de la cabecera           |
+| `--cielo-600`  | `#0284c7` | hover del botón primario, links              |
+| `--cielo-700`  | `#0369a1` | títulos y botón primario de la cabecera      |
+| `--marino-900` | `#0c4a6e` | texto principal y texto sobre la cabecera    |
+| `--verde-100`  | `#dcfce7` | fondo de la etiqueta de perfil, fin del fondo |
+| `--verde-500`  | `#22c55e` | verde del colibrí (referencia de la marca)   |
+| `--verde-700`  | `#15803d` | texto de éxito, "Bird" de la marca, pie      |
+
+La cabecera usa un degradado `--cielo-300 → --cielo-400 → --cielo-500` con texto
+azul marino (blanco sobre celeste no llega al contraste AA) y el colibrí sobre una
+chapa blanca, para que el pájaro verde no se pierda contra el fondo.
+
+### Icono
+
+Todos los derivados salen de `backend/assets/hummingbird.png` (512 × 512, PNG con
+fondo transparente). Se recorta el margen sobrante, se cuadra el lienzo con un 6 %
+de aire y se exportan en `public/`:
+
+| Archivo             | Tamaño  | Uso                                        |
+| ------------------- | ------- | ------------------------------------------ |
+| `identibird.png`    | 512×512 | header (38 px) y logo de login/registro     |
+| `identibird-32.png` | 32×32   | `<link rel="icon">` para navegadores viejos |
+| `identibird-180.png`| 180×180 | `apple-touch-icon` (con fondo blanco: iOS pinta de negro la transparencia) |
+
+Para regenerarlos alcanza con volver a exportar el PNG original con esos tres
+tamaños (yo usé Pillow con `Image.LANCZOS`).
 
 ## Si el login devuelve "credenciales incorrectas"
 
@@ -152,4 +183,30 @@ contraseña está mal. Revisá, en este orden:
    cuentas creadas antes de la normalización pueden necesitar un registro nuevo).
 3. Que no se esté tipeando un espacio al final: el frontend recorta, pero si el
    password original tenía espacios intermedios no van a coincidir.
+
+## Despliegue en Vercel
+
+El repo se despliega como **un solo proyecto de Vercel con dos `services`**
+(`vercel.json` en la raíz):
+
+| Servicio   | Root        | Framework | Expuesto en |
+| ---------- | ----------- | --------- | ----------- |
+| `backend`  | `backend/`  | `nestjs`  | `/api/(.*)` |
+| `frontend` | `frontend/` | `angular` | `/(.*)`     |
+
+Ambos comparten dominio, así que el build de producción usa `apiUrl: '/api'`
+(relativa) y el rewrite manda esas requests al servicio `backend`. Los dos
+servicios son públicos porque el navegador es el que llama a la API; no hay
+`bindings` (las bindings sólo existen para código server-side en runtime y este
+frontend es una SPA estática, sin SSR).
+
+Para probar el proyecto completo en local hace falta la CLI:
+
+```powershell
+npm i -g vercel
+vercel dev      # levanta los dos services y aplica los rewrites
+```
+
+Las variables de entorno del backend (`MONGODB_URI`, `CLOUD_NAME`, etc.) se
+cargan en la configuración del proyecto de Vercel; ver `../backend/README.md`.
 

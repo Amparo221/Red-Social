@@ -1,36 +1,39 @@
 /* ============================================================
-   Purplegram · estilos globales
-   Paleta púrpura clara inspirada en el icono (racimo de uvas).
+   IdentiBird · estilos globales
+   Paleta de azules y celestes con acentos verdes claros,
+   inspirada en el colibrí del icono de la app.
    Las variables de :root se reutilizan desde todos los componentes.
    ============================================================ */
 
 :root {
-  /* Escala de lilas: del fondo casi blanco al púrpura de los títulos. */
-  --lila-50: #faf5ff;
-  --lila-100: #f3e8ff;
-  --lila-200: #e9d5ff;
-  --lila-300: #d8b4fe;
-  --lila-400: #c084fc;
-  --lila-500: #a855f7;
-  --lila-600: #9333ea;
-  --lila-700: #7e22ce;
-  --uva-900: #3b0764;
-  /* Único acento verde: la hojita del icono, para los mensajes de éxito. */
-  --hoja-500: #22c55e;
+  /* Escala de celestes: del fondo casi blanco al azul de los títulos. */
+  --cielo-50: #f0f9ff;
+  --cielo-100: #e0f2fe;
+  --cielo-200: #bae6fd;
+  --cielo-300: #7dd3fc;
+  --cielo-400: #38bdf8;
+  --cielo-500: #0ea5e9;
+  --cielo-600: #0284c7;
+  --cielo-700: #0369a1;
+  --marino-900: #0c4a6e;
+  /* Verdes: el color del colibrí, para acentos y mensajes de éxito. */
+  --verde-100: #dcfce7;
+  --verde-500: #22c55e;
+  --verde-700: #15803d;
 
   --blanco: #ffffff;
-  --texto: #3b0764;
-  --texto-suave: #6b21a8;
+  --texto: #0c4a6e;
+  --texto-suave: #155e75;
   --error: #b91c1c;
   --error-fondo: #fee2e2;
   --error-borde: #fecaca;
-  --ok: #15803d;
-  --ok-fondo: #dcfce7;
+  --ok: var(--verde-700);
+  --ok-fondo: var(--verde-100);
   --ok-borde: #bbf7d0;
 
   --radio: 16px;
   --radio-chico: 10px;
-  --sombra: 0 10px 30px rgba(147, 51, 234, 0.15);
+  --sombra: 0 10px 30px rgba(2, 132, 199, 0.15);
   --fuente:
     system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
@@ -50,7 +53,7 @@ body {
   margin: 0;
   font-family: var(--fuente);
   color: var(--texto);
-  background: linear-gradient(160deg, var(--lila-50) 0%, var(--lila-100) 45%, var(--lila-200) 100%);
+  background: linear-gradient(160deg, var(--cielo-50) 0%, var(--cielo-100) 45%, var(--verde-100) 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
@@ -66,7 +69,7 @@ h1,
 h2,
 h3 {
   margin: 0 0 0.5rem;
-  color: var(--lila-700);
+  color: var(--cielo-700);
   line-height: 1.2;
 }
 
@@ -84,18 +87,18 @@ p {
 }
 
 a {
-  color: var(--lila-600);
+  color: var(--cielo-600);
   font-weight: 600;
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--lila-700);
+  color: var(--cielo-700);
   text-decoration: underline;
 }
 
 :focus-visible {
-  outline: 3px solid var(--lila-400);
+  outline: 3px solid var(--cielo-400);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -116,7 +119,7 @@ a:hover {
   width: 100%;
   padding: 2rem;
   background: var(--blanco);
-  border: 1px solid var(--lila-200);
+  border: 1px solid var(--cielo-200);
   border-radius: var(--radio);
   box-shadow: var(--sombra);
 }
@@ -174,8 +177,8 @@ a:hover {
   padding: 0.7rem 0.85rem;
   font: inherit;
   color: var(--texto);
-  background: var(--lila-50);
-  border: 1.5px solid var(--lila-300);
+  background: var(--cielo-50);
+  border: 1.5px solid var(--cielo-300);
   border-radius: var(--radio-chico);
   transition:
     border-color 0.15s,
@@ -190,8 +193,8 @@ a:hover {
 .campo__control:focus {
   outline: none;
   background: var(--blanco);
-  border-color: var(--lila-500);
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
+  border-color: var(--cielo-500);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.22);
 }
 
 .campo__control[aria-invalid='true'] {
@@ -262,25 +265,25 @@ textarea.campo__control {
 
 .boton--primario {
   color: var(--blanco);
-  background: var(--lila-500);
-  box-shadow: 0 6px 16px rgba(168, 85, 247, 0.35);
+  background: var(--cielo-500);
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.35);
 }
 
 .boton--primario:hover:not(:disabled) {
   color: var(--blanco);
-  background: var(--lila-600);
+  background: var(--cielo-600);
 }
 
 .boton--secundario {
-  color: var(--lila-700);
+  color: var(--cielo-700);
   background: var(--blanco);
-  border-color: var(--lila-300);
+  border-color: var(--cielo-300);
 }
 
 .boton--secundario:hover:not(:disabled) {
-  color: var(--lila-700);
-  background: var(--lila-100);
-  border-color: var(--lila-400);
+  color: var(--cielo-700);
+  background: var(--cielo-100);
+  border-color: var(--cielo-400);
 }
 
 .boton--chico {
@@ -337,8 +340,8 @@ textarea.campo__control {
   width: 48px;
   height: 48px;
   object-fit: cover;
-  background: var(--lila-100);
-  border: 2px solid var(--lila-300);
+  background: var(--cielo-100);
+  border: 2px solid var(--cielo-300);
   border-radius: 50%;
 }
 
@@ -360,8 +363,8 @@ textarea.campo__control {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--lila-700);
-  background: var(--lila-100);
+  color: var(--verde-700);
+  background: var(--verde-100);
   border-radius: 999px;
 }
 
