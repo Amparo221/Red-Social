@@ -1,0 +1,109 @@
+<section class="feed">
+  <header class="feed__encabezado">
+    <h1>Publicaciones</h1>
+    <p class="feed__bajada">Lo último que compartió la comunidad de IdentiBird.</p>
+  </header>
+
+  @if (recienRegistrado) {
+    <div class="alerta alerta--ok" role="status">
+      ¡Cuenta creada! Ya estás dentro de IdentiBird. Ahora podés compartir tu primer avistaje.
+    </div>
+  }
+
+  @if (aviso(); as mensaje) {
+    <div class="alerta alerta--ok" role="status" aria-live="polite">
+      <p>{{ mensaje }}</p>
+    </div>
+  }
+
+  @if (errores().length > 0) {
+    <div class="alerta alerta--error" role="alert" aria-live="polite">
+      @if (errores().length === 1) {
+        <p>{{ errores()[0] }}</p>
+      } @else {
+        <ul>
+          @for (mensaje of errores(); track $index) {
+            <li>{{ mensaje }}</li>
+          }
+        </ul>
+      }
+      <button class="boton boton--secundario boton--chico" type="button" (click)="cargar()">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  <app-compositor (creada)="alCrear($event)" />
+
+  <div class="feed__barra">
+    <p class="feed__total" role="status">
+      {{ total() }} {{ total() === 1 ? 'publicación' : 'publicaciones' }}
+    </p>
+
+    <div class="chips" role="group" aria-label="Ordenar publicaciones">
+      <button
+        class="chip"
+        type="button"
+        [class.chip--activo]="orden() === 'fecha'"
+        [attr.aria-pressed]="orden() === 'fecha'"
+        (click)="cambiarOrden('fecha')"
+      >
+        Recientes
+      </button>
+      <button
+        class="chip"
+        type="button"
+        [class.chip--activo]="orden() === 'likes'"
+        [attr.aria-pressed]="orden() === 'likes'"
+        (click)="cambiarOrden('likes')"
+      >
+        Más gustadas
+      </button>
+      <button
+        class="chip"
+        type="button"
+        [class.chip--activo]="soloMias()"
+        [attr.aria-pressed]="soloMias()"
+        (click)="alternarMias()"
+      >
+        Mías
+      </button>
+    </div>
+  </div>
+
+  @if (cargando()) {
+    <p class="feed__estado" role="status">Cargando publicaciones…</p>
+  } @else if (vacio()) {
+    <div class="feed__vacio tarjeta">
+      @if (soloMias()) {
+        <p>Todavía no publicaste nada. ¡Contá tu primer avistaje desde el formulario de arriba!</p>
+      } @else {
+        <p>Todavía no hay publicaciones. ¡Compartí el primer avistaje desde el formulario de arriba!</p>
+      }
+    </div>
+  } @else {
+    @for (publicacion of publicaciones(); track publicacion.id) {
+      <app-publicacion-card
+        [publicacion]="publicacion"
+        [idUsuario]="idUsuario()"
+        [esAdministrador]="esAdministrador()"
+        [ocupada]="estaOcupada(publicacion)"
+        (meGusta)="alternarLike(publicacion)"
+        (eliminar)="alEliminar(publicacion)"
+      />
+    }
+
+    @if (hayMas()) {
+      <button
+        class="boton boton--secundario boton--bloque"
+        type="button"
+        [disabled]="cargandoMas()"
+        (click)="cargarMas()"
+      >
+        {{ cargandoMas() ? 'Cargando…' : 'Cargar más' }}
+      </button>
+    } @else {
+      <p class="feed__fin">No hay más publicaciones para mostrar.</p>
+    }
+  }
+</section>

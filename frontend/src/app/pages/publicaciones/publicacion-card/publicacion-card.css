@@ -1,0 +1,157 @@
+/* Tarjeta del feed. Blanca sobre el fondo celeste, igual que las del registro. */
+.publicacion {
+  padding: 1.35rem;
+  margin-bottom: 1.25rem;
+  background: var(--blanco);
+  border: 1px solid var(--cielo-200);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+
+/* ---------- cabecera con el autor ---------- */
+.publicacion__cabecera {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.9rem;
+}
+
+.publicacion__autor {
+  flex: 1;
+  min-width: 0;
+}
+
+.publicacion__nombre {
+  margin: 0;
+  font-weight: 700;
+  color: var(--marino-900);
+}
+
+.publicacion__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.1rem 0 0;
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+}
+
+.publicacion__pregunta {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--error);
+}
+
+.publicacion__confirmacion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Borrar no es la acción principal: texto chico, rojo, sin fondo. */
+.enlace-eliminar {
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radio-chico);
+  cursor: pointer;
+}
+
+.enlace-eliminar:hover:not(:disabled) {
+  color: var(--error);
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+
+.enlace-eliminar:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---------- contenido ---------- */
+.publicacion__titulo {
+  margin-bottom: 0.4rem;
+  font-size: 1.15rem;
+}
+
+.publicacion__texto {
+  margin-bottom: 0.8rem;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.publicacion__ave {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.9rem;
+}
+
+.publicacion__cientifico {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.publicacion__imagen {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  margin-bottom: 0.9rem;
+  object-fit: cover;
+  background: var(--cielo-100);
+  border: 1px solid var(--cielo-200);
+  border-radius: var(--radio-chico);
+}
+
+/* ---------- pie con el me gusta ---------- */
+.publicacion__pie {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.me-gusta {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+  background: var(--cielo-50);
+  border: 1.5px solid var(--cielo-200);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.me-gusta:hover:not(:disabled) {
+  color: var(--error);
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+
+.me-gusta--activo {
+  color: var(--error);
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+
+.me-gusta__icono {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.me-gusta:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}

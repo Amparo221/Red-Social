@@ -1,0 +1,90 @@
+<article class="publicacion">
+  <header class="publicacion__cabecera">
+    <img class="avatar avatar--chico" [src]="avatar()" [alt]="'Foto de perfil de ' + nombre()" />
+
+    <div class="publicacion__autor">
+      <p class="publicacion__nombre">{{ nombre() }}</p>
+      <p class="publicacion__meta">
+        @if (autor(); as datosAutor) {
+          <span>&#64;{{ datosAutor.nombreUsuario }}</span>
+          <span aria-hidden="true">·</span>
+        }
+        <time [attr.datetime]="publicacion().createdAt ?? null" [title]="fechaTooltip()">
+          {{ fecha() }}
+        </time>
+      </p>
+    </div>
+
+    @if (puedeEliminar()) {
+      @if (confirmando()) {
+        <div class="publicacion__confirmacion">
+          <span class="publicacion__pregunta">¿Eliminar?</span>
+          <button
+            class="boton boton--peligro boton--chico"
+            type="button"
+            [disabled]="ocupada()"
+            (click)="confirmarBorrado()"
+          >
+            {{ ocupada() ? 'Eliminando…' : 'Sí, borrar' }}
+          </button>
+          <button
+            class="boton boton--secundario boton--chico"
+            type="button"
+            [disabled]="ocupada()"
+            (click)="cancelar()"
+          >
+            No
+          </button>
+        </div>
+      } @else {
+        <button
+          class="enlace-eliminar"
+          type="button"
+          [disabled]="ocupada()"
+          (click)="pedirConfirmacion()"
+        >
+          Eliminar
+        </button>
+      }
+    }
+  </header>
+
+  <h2 class="publicacion__titulo">{{ publicacion().titulo }}</h2>
+  <p class="publicacion__texto">{{ publicacion().descripcion }}</p>
+
+  @if (publicacion().nombreComun || publicacion().nombreCientifico) {
+    <p class="publicacion__ave">
+      @if (publicacion().nombreComun) {
+        <span class="etiqueta">{{ publicacion().nombreComun }}</span>
+      }
+      @if (publicacion().nombreCientifico) {
+        <em class="publicacion__cientifico">{{ publicacion().nombreCientifico }}</em>
+      }
+    </p>
+  }
+
+  @if (publicacion().imagenUrl) {
+    <img
+      class="publicacion__imagen"
+      [src]="publicacion().imagenUrl"
+      [alt]="'Foto de ' + publicacion().titulo"
+      loading="lazy"
+      decoding="async"
+    />
+  }
+
+  <footer class="publicacion__pie">
+    <button
+      class="me-gusta"
+      type="button"
+      [class.me-gusta--activo]="publicacion().likeado"
+      [attr.aria-pressed]="publicacion().likeado"
+      [attr.aria-label]="'Me gusta (' + publicacion().cantidadLikes + ')'"
+      [disabled]="ocupada()"
+      (click)="meGusta.emit()"
+    >
+      <span class="me-gusta__icono" aria-hidden="true">{{ publicacion().likeado ? '♥' : '♡' }}</span>
+      <span class="me-gusta__contador">{{ publicacion().cantidadLikes }}</span>
+    </button>
+  </footer>
+</article>

@@ -2,10 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
-import type { NuevoUsuario, Usuario } from '../models/usuario.model';
+import type { NuevoUsuario, Sesion } from '../models/usuario.model';
 import { AuthService, CLAVE_SESION } from './auth.service';
 
-const USUARIO: Usuario = {
+const TOKEN = 'token-de-prueba';
+
+const USUARIO: Sesion = {
   id: '64b7f0c2a1b2c3d4e5f60718',
   nombre: 'Ana',
   apellido: 'Moreno',
@@ -15,6 +17,7 @@ const USUARIO: Usuario = {
   descripcion: '',
   imagenPerfilUrl: 'https://res.cloudinary.com/demo/red-social/perfiles/default.jpg',
   perfil: 'usuario',
+  token: TOKEN,
 };
 
 const NUEVO: NuevoUsuario = {
@@ -48,14 +51,15 @@ describe('AuthService', () => {
   it('arranca sin sesión', () => {
     expect(servicio.estaLogueado()).toBe(false);
     expect(servicio.usuarioActual()).toBeNull();
+    expect(servicio.tokenActual()).toBeNull();
   });
 
   it('hace POST JSON a /auth/login, recorta los datos y guarda la sesión', () => {
-    let respuesta: Usuario | undefined;
+    let respuesta: Sesion | undefined;
 
     servicio
       .login({ identificador: '  ana@correo.com ', password: ' Segura123 ' })
-      .subscribe((usuario) => (respuesta = usuario));
+      .subscribe((sesion) => (respuesta = sesion));
 
     const pedido = http.expectOne(`${environment.apiUrl}/auth/login`);
     expect(pedido.request.method).toBe('POST');
@@ -69,7 +73,9 @@ describe('AuthService', () => {
     expect(respuesta).toEqual(USUARIO);
     expect(servicio.usuarioActual()).toEqual(USUARIO);
     expect(servicio.estaLogueado()).toBe(true);
+    expect(servicio.tokenActual()).toBe(TOKEN);
     expect(localStorage.getItem(CLAVE_SESION)).toContain('anamoreno');
+    expect(localStorage.getItem(CLAVE_SESION)).toContain(TOKEN);
   });
 
   it('registra como multipart (FormData) con la foto elegida', () => {
@@ -128,5 +134,22 @@ describe('AuthService', () => {
 
     expect(nuevoServicio.estaLogueado()).toBe(true);
     expect(nuevoServicio.usuarioActual()?.nombreUsuario).toBe('anamoreno');
+    expect(nuevoServicio.tokenActual()).toBe(TOKEN);
+  });
+
+  it('descarta la sesión guardada sin token (las del Sprint 1 ya no sirven)', () => {
+    TestBed.resetTestingModule();
+    // Un JSON.stringify ignora las claves undefined, así que esto simula una
+    // sesión vieja guardada sin token.
+    localStorage.setItem(CLAVE_SESION, JSON.stringify({ ...USUARIO, token: undefined }));
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+
+    const nuevoServicio = TestBed.inject(AuthService);
+    http = TestBed.inject(HttpTestingController);
+
+    expect(nuevoServicio.estaLogueado()).toBe(false);
+    expect(nuevoServicio.tokenActual()).toBeNull();
   });
 });

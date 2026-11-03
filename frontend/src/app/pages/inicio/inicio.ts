@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { urlAvatar } from '../../core/models/usuario.model';
 
@@ -11,13 +11,9 @@ import { urlAvatar } from '../../core/models/usuario.model';
 export class Inicio {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly ruta = inject(ActivatedRoute);
 
   protected readonly usuario = this.auth.usuarioActual;
   protected readonly avatar = computed(() => urlAvatar(this.usuario()));
-
-  /** Se muestra el saludo de bienvenida sólo al volver del registro. */
-  protected readonly recienRegistrado = this.ruta.snapshot.queryParamMap.has('bienvenida');
 
   protected readonly fechaNacimiento = computed(() => this.formatearFecha(this.usuario()?.fechaNacimiento));
   protected readonly miembroDesde = computed(() => this.formatearFecha(this.usuario()?.createdAt));

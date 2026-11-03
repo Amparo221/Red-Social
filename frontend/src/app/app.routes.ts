@@ -2,8 +2,9 @@ import { Routes } from '@angular/router';
 import { sesionGuard } from './core/guards/sesion.guard';
 
 export const routes: Routes = [
-  // La app arranca en el login: sin sesión no hay nada más para ver.
-  { path: '', pathMatch: 'full', redirectTo: 'login' },
+  // La pantalla principal es el feed. El guard manda al login si no hay sesión,
+  // así que entrar a la app sin cuenta termina siempre en /login.
+  { path: '', pathMatch: 'full', redirectTo: 'publicaciones' },
   {
     path: 'login',
     title: 'IdentiBird · Ingresar',
@@ -15,10 +16,16 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/registro/registro').then((m) => m.Registro),
   },
   {
+    path: 'publicaciones',
+    title: 'IdentiBird · Publicaciones',
+    canActivate: [sesionGuard],
+    loadComponent: () => import('./pages/publicaciones/publicaciones').then((m) => m.Publicaciones),
+  },
+  {
     path: 'inicio',
     title: 'IdentiBird · Mi perfil',
     canActivate: [sesionGuard],
     loadComponent: () => import('./pages/inicio/inicio').then((m) => m.Inicio),
   },
-  { path: '**', redirectTo: 'login' },
+  { path: '**', redirectTo: 'publicaciones' },
 ];

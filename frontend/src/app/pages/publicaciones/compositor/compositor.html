@@ -1,0 +1,121 @@
+<section class="compositor tarjeta">
+  <h2 class="compositor__titulo">Compartí un avistaje</h2>
+
+  @if (errores().length > 0) {
+    <div class="alerta alerta--error" role="alert" aria-live="polite">
+      @if (errores().length === 1) {
+        <p>{{ errores()[0] }}</p>
+      } @else {
+        <ul>
+          @for (mensaje of errores(); track $index) {
+            <li>{{ mensaje }}</li>
+          }
+        </ul>
+      }
+    </div>
+  }
+
+  <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+    <div class="campo">
+      <label class="campo__label" for="titulo-publicacion">Título</label>
+      <input
+        id="titulo-publicacion"
+        class="campo__control"
+        type="text"
+        formControlName="titulo"
+        maxlength="100"
+        placeholder="Titulo de la publicación"
+        [attr.aria-invalid]="mensaje('titulo') !== null"
+      />
+      @if (mensaje('titulo'); as texto) {
+        <span class="campo__error">{{ texto }}</span>
+      }
+    </div>
+
+    <div class="campo">
+      <label class="campo__label" for="descripcion-publicacion">Descripción</label>
+      <textarea
+        id="descripcion-publicacion"
+        class="campo__control"
+        formControlName="descripcion"
+        rows="3"
+        maxlength="500"
+        placeholder="Contá cuándo y dónde lo viste"
+        [attr.aria-invalid]="mensaje('descripcion') !== null"
+      ></textarea>
+      <span class="campo__contador">{{ descripcion.value.length }}/500</span>
+      @if (mensaje('descripcion'); as texto) {
+        <span class="campo__error">{{ texto }}</span>
+      }
+    </div>
+
+    <div class="fila">
+      <div class="campo">
+        <label class="campo__label" for="nombre-comun">
+          Nombre común <span class="campo__ayuda">(opcional)</span>
+        </label>
+        <input
+          id="nombre-comun"
+          class="campo__control"
+          type="text"
+          formControlName="nombreComun"
+          maxlength="80"
+          placeholder="Nombre común del ave"
+          [attr.aria-invalid]="mensaje('nombreComun') !== null"
+        />
+        @if (mensaje('nombreComun'); as texto) {
+          <span class="campo__error">{{ texto }}</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label class="campo__label" for="nombre-cientifico">
+          Nombre científico <span class="campo__ayuda">(opcional)</span>
+        </label>
+        <input
+          id="nombre-cientifico"
+          class="campo__control"
+          type="text"
+          formControlName="nombreCientifico"
+          maxlength="80"
+          placeholder="Nombre científico del ave"
+          [attr.aria-invalid]="mensaje('nombreCientifico') !== null"
+        />
+        @if (mensaje('nombreCientifico'); as texto) {
+          <span class="campo__error">{{ texto }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="campo">
+      <label class="campo__label" for="foto-publicacion">
+        Foto <span class="campo__ayuda">(opcional)</span>
+      </label>
+      <input
+        #archivoInput
+        id="foto-publicacion"
+        class="campo__archivo"
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        (change)="alElegirArchivo($event)"
+      />
+      <span class="campo__ayuda">JPG, PNG, WEBP o GIF · hasta 5 MB.</span>
+      @if (errorImagen(); as error) {
+        <span class="campo__error">{{ error }}</span>
+      }
+      @if (vistaPrevia(); as vista) {
+        <div class="vista-previa vista-previa--foto">
+          <img [src]="vista" alt="Vista previa de la foto elegida" />
+          <span class="vista-previa__nombre">{{ nombreArchivo() }}</span>
+          <button class="boton boton--secundario boton--chico" type="button" (click)="quitarImagen()">
+            Quitar
+          </button>
+        </div>
+      }
+    </div>
+
+    <button class="boton boton--primario boton--bloque" type="submit" [disabled]="enviando()">
+      {{ enviando() ? 'Publicando…' : 'Publicar' }}
+    </button>
+  </form>
+</section>

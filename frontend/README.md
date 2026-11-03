@@ -1,8 +1,8 @@
-# IdentiBird · Frontend (Sprint 1)
+# IdentiBird · Frontend (Sprint 2)
 
 Aplicación Angular del trabajo práctico de red social. Consume la API NestJS de
-`../backend` para el registro y el login: no hay datos mockeados, la sesión sale
-de un `POST` real al backend.
+`../backend`: registro, login y el feed de **publicaciones** (crear, listar con
+paginación/orden, dar y quitar me gusta, eliminar). No hay datos mockeados.
 
 - **Angular 22** (standalone components, zoneless) + **TypeScript**
 - Paleta de azules y celestes con acentos verdes claros, con el colibrí de
@@ -40,12 +40,16 @@ Otros comandos:
 
 ## Pantallas y rutas
 
-| Ruta        | Pantalla                | Detalle                                                          |
-| ----------- | ----------------------- | ---------------------------------------------------------------- |
-| `/login`    | Ingresar                | Correo **o** nombre de usuario + contraseña. Ruta inicial.        |
-| `/registro` | Crear cuenta            | Formulario completo, con foto de perfil opcional y vista previa.  |
-| `/inicio`   | Mi perfil               | Datos del usuario logueado. Protegida por `sesionGuard`.          |
-| `**`        | redirección a `/login`  | Cualquier ruta desconocida vuelve al login.                       |
+| Ruta             | Pantalla       | Detalle                                                                 |
+| ---------------- | -------------- | ----------------------------------------------------------------------- |
+| `/publicaciones` | Publicaciones  | **Pantalla principal.** Feed + compositor para publicar. Protegida.     |
+| `/login`         | Ingresar       | Correo **o** nombre de usuario + contraseña.                            |
+| `/registro`      | Crear cuenta   | Formulario completo, con foto de perfil opcional y vista previa.        |
+| `/inicio`        | Mi perfil      | Datos del usuario logueado. Protegida por `sesionGuard`.                |
+| `''` y `**`      | → `/publicaciones` | El guard manda a `/login` si no hay sesión, así que entrar sin cuenta termina siempre en el login. |
+
+Después del login y del registro se entra siempre a `/publicaciones`; el registro
+agrega `?bienvenida=1` y el feed muestra ahí el saludo de cuenta creada.
 
 ## Conexión con el backend
 
@@ -67,13 +71,50 @@ no hay CORS de por medio (en desarrollo sí, `app.enableCors()`).
 | Registro | `POST /api/auth/registro`  | `multipart/form-data`: `nombre`, `apellido`, `correo`, `nombreUsuario`, `password`, `fechaNacimiento`, `descripcion` (opcional), `imagen` (archivo opcional) | `201` + usuario |
 | Login    | `POST /api/auth/login`     | JSON: `{ identificador, password }` (`identificador` = correo o nombre de usuario)                                                                         | `200` + usuario |
 
+### Feed de publicaciones (Sprint 2)
+
+Todas estas rutas exigen `Authorization: Bearer <token>` (lo agrega el
+`authInterceptor`, ver [Sesión y JWT](#sesión-y-jwt)).
+
+| Acción        | Método y ruta                        | Cuerpo / query                                                                                   | Respuesta |
+| ------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------ | --------- |
+| Listar feed   | `GET /api/publicaciones`             | `offset` (0), `limit` (6), `orden` (`fecha` \| `likes`), `usuario` (id del autor)                | `200` + `{ total, offset, limit, orden, hayMas, publicaciones[] }` |
+| Crear         | `POST /api/publicaciones`            | `multipart/form-data`: `titulo`, `descripcion`, `nombreComun`, `nombreCientifico` (opcionales), `imagen` (archivo opcional) | `201` + publicación |
+| Dar me gusta  | `POST /api/publicaciones/:id/like`   | —                                                                                                | `201` + `{ id, cantidadLikes, likeado: true }` |
+| Quitar me gusta | `DELETE /api/publicaciones/:id/like` | —                                                                                              | `200` + `{ id, cantidadLikes, likeado: false }` |
+| Eliminar      | `DELETE /api/publicaciones/:id`      | —                                                                                                | `200` + `{ id, eliminado: true, fechaEliminacion }` |
+
+Cada publicación llega con `id`, `titulo`, `descripcion`, `nombreComun`,
+`nombreCientifico`, `imagenUrl`, `usuario` (autor populado: `id`, `nombre`,
+`apellido`, `nombreUsuario`, `imagenPerfilUrl`), `cantidadLikes`, `likeado`
+(calculado para el usuario del token), `eliminado`, `createdAt` y `updatedAt`.
+
+Decisiones del feed:
+
+- **Compositor siempre visible** arriba de la lista, sin modal ni pantalla aparte.
+  La publicación creada se inserta al principio sin recargar el feed.
+- **"Cargar más"** en vez de scroll infinito: `offset = publicaciones ya
+  mostradas`, así no se repiten ni se saltean filas cuando alguien publica o
+  borra en el medio (además se deduplica por `id` al agregar la página).
+- **Chips de orden**: `Recientes` (`orden=fecha`), `Más gustadas`
+  (`orden=likes`) y `Mías` (`usuario=<mi id>`).
+- **Me gusta optimista**: la tarjeta cambia al instante y se confirma con la
+  respuesta del backend; si falla se revierte. Un `409` (dos pestañas, doble
+  request) deja el cambio y muestra el mensaje del backend.
+- **Eliminar en dos pasos** dentro de la tarjeta (sin `confirm()` del navegador),
+  visible sólo para el autor o para un `perfil: 'administrador'`, que es la misma
+  regla que aplica el backend.
+- Sin foto la tarjeta se muestra sólo con texto.
+
 Errores que el frontend traduce (`src/app/core/utils/error-http.util.ts`):
 
 | Estado | Qué muestra la pantalla                                                                         |
 | ------ | ----------------------------------------------------------------------------------------------- |
 | `400`  | La lista de mensajes del `ValidationPipe` (una por campo inválido)                               |
-| `401`  | `Usuario/correo o contraseña incorrectos.` (mensaje genérico a propósito)                        |
-| `409`  | El mensaje del backend: `El correo ya está registrado` / `El nombre de usuario ya está en uso`   |
+| `401`  | En el login: `Usuario/correo o contraseña incorrectos.` En una pantalla privada: la sesión venció (y el interceptor manda al login) |
+| `403`  | El mensaje del backend (`Solo el autor de la publicación o un administrador pueden eliminarla`)  |
+| `404`  | El mensaje del backend (`La publicación no existe`)                                              |
+| `409`  | El mensaje del backend: `El correo ya está registrado`, `El nombre de usuario ya está en uso`, `Ya le diste me gusta a esta publicación` |
 | `413`  | `La imagen no puede superar los 5 MB.`                                                           |
 | `0`    | `No pudimos conectarnos con el servidor…` (backend apagado)                                      |
 
@@ -88,16 +129,25 @@ Errores que el frontend traduce (`src/app/core/utils/error-http.util.ts`):
 - `fechaNacimiento` viaja como `AAAA-MM-DD` (lo que devuelve `<input type="date">`).
 - La imagen es **opcional**: si no se sube, el backend guarda su avatar por defecto.
 
-### Sesión
+### Sesión y JWT
 
-El backend del Sprint 1 todavía **no emite JWT**: lo que devuelve el login es el
-usuario público (`id`, `nombre`, `correo`, `nombreUsuario`, `imagenPerfilUrl`,
-`perfil`, …). El frontend guarda ese objeto en `localStorage` bajo la clave
-`identibird.usuario` y lo expone como signal (`AuthService.usuarioActual`), así un
-F5 no cierra la sesión.
+El login y el registro devuelven `{ ...usuario, token }`. El frontend guarda ese
+objeto completo en `localStorage` bajo `identibird.sesion` y lo expone como
+signal (`AuthService.usuarioActual` y `tokenActual`), así un F5 no cierra la
+sesión.
 
-> `sesionGuard` sólo evita mostrar `/inicio` sin sesión iniciada: **no es
-> seguridad real**. Cuando el Sprint 2 agregue el token, el guard pasa a validarlo.
+- **`authInterceptor`** (`src/app/core/interceptors/auth.interceptor.ts`) agrega
+  `Authorization: Bearer <token>` a toda request que vaya a `environment.apiUrl`,
+  salvo `/auth/login` y `/auth/registro` (son públicas).
+- El JWT dura **15 minutos** (`JWT_EXPIRES_IN=900` en el backend). Cuando una
+  ruta protegida responde `401`, el interceptor cierra la sesión y navega a
+  `/login?sesion=expirada`; el login arranca mostrando esa alerta.
+- Una sesión guardada sin `token` (las del Sprint 1, bajo `identibird.usuario`)
+  se descarta al arrancar: esas requests ya no sirven porque el backend exige el
+  Bearer.
+- `sesionGuard` usa ese mismo signal para no mostrar pantallas privadas sin
+  sesión. **No es seguridad real**: la validación la hace el `JwtAuthGuard` del
+  backend en cada request.
 
 ## Estructura
 
@@ -107,19 +157,50 @@ src/
 ├─ styles.css                     paleta celeste + verde + clases base (tarjeta, campo, botón…)
 ├─ environments/                  apiUrl por entorno (fileReplacements en angular.json)
 └─ app/
-   ├─ app.ts / app.html / app.css shell: header con logo, nav y footer
-   ├─ app.config.ts               provideRouter + provideHttpClient(withFetch())
-   ├─ app.routes.ts               login, registro, inicio (lazy) + guard
+   ├─ app.ts / app.html / app.css shell: header con logo, nav (Publicaciones / Mi perfil / Salir) y footer
+   ├─ app.config.ts               provideRouter + provideHttpClient(withFetch(), withInterceptors([authInterceptor]))
+   ├─ app.routes.ts               publicaciones (inicial), login, registro, inicio (lazy) + guard
    ├─ core/
-   │  ├─ models/usuario.model.ts  tipos del contrato + fallback de avatar
-   │  ├─ services/auth.service.ts registrar(), login(), cerrarSesion(), sesión
+   │  ├─ models/usuario.model.ts  tipos del contrato, Sesion (usuario + token), avatar y perfil
+   │  ├─ models/publicacion.model.ts tipos del feed + helpers (autorDe, nombreAutor, esAutor)
+   │  ├─ services/auth.service.ts registrar(), login(), cerrarSesion(), usuarioActual/tokenActual
+   │  ├─ services/publicaciones.service.ts listar(), crear(), darLike(), quitarLike(), eliminar()
+   │  ├─ interceptors/auth.interceptor.ts Bearer del JWT + 401 → logout
    │  ├─ utils/error-http.util.ts traducción de errores HTTP a mensajes
-   │  └─ guards/sesion.guard.ts   protege /inicio
+   │  ├─ utils/fecha.util.ts      "hace 5 min" para las tarjetas
+   │  ├─ utils/imagen.util.ts     validación de la foto (tipo y 5 MB) compartida
+   │  └─ guards/sesion.guard.ts   protege /publicaciones y /inicio
    └─ pages/
+      ├─ publicaciones/          feed: estado, filtros y paginación (+ spec)
+      │  ├─ publicacion-card/    tarjeta: autor, foto, me gusta y borrar en dos pasos
+      │  └─ compositor/          formulario para publicar (texto + foto opcional)
       ├─ login/       formulario de ingreso
       ├─ registro/    formulario de alta + subida de foto
       └─ inicio/      perfil del usuario logueado
 ```
+
+## Validaciones del compositor de publicaciones
+
+Espejo de `backend/src/publicaciones/dto/create-publicacion.dto.ts`:
+
+| Campo              | Regla                                              |
+| ------------------ | -------------------------------------------------- |
+| `titulo`           | obligatorio, máximo 100                            |
+| `descripcion`      | obligatorio, máximo 500                            |
+| `nombreComun`      | opcional, máximo 80                                |
+| `nombreCientifico` | opcional, máximo 80                                |
+| `imagen`           | opcional, JPG/PNG/WEBP/GIF, hasta 5 MB (con vista previa) |
+
+## Checklist del Sprint 2
+
+- [x] Login y registro guardan el JWT y entran al feed.
+- [x] `authInterceptor` con `Authorization: Bearer` y logout automático en 401.
+- [x] Feed con paginación (`offset`/`limit`), orden por fecha o me gusta y filtro "Mías".
+- [x] Publicar con título, descripción, nombres del ave y foto opcional (multipart).
+- [x] Me gusta y "quitar me gusta" con actualización optimista.
+- [x] Baja lógica de las publicaciones propias (o de cualquier publicación si sos administrador).
+- [x] Estados de carga, vacío, error y avisos de éxito.
+- [x] Tests unitarios de servicios, interceptor, utilidades y pantallas (`npm test`).
 
 ## Validaciones del formulario de registro
 

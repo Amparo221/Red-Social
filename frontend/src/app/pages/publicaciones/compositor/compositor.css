@@ -1,0 +1,27 @@
+/* Compositor del feed: una tarjeta blanca más compacta que la del registro. */
+.compositor {
+  padding: 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.compositor__titulo {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1.1rem;
+  font-size: 1.1rem;
+}
+
+.compositor__titulo::before {
+  content: '';
+  width: 8px;
+  height: 22px;
+  background: var(--verde-500);
+  border-radius: 999px;
+}
+
+@media (max-width: 520px) {
+  .compositor {
+    padding: 1.15rem;
+  }
+}

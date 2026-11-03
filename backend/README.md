@@ -62,6 +62,7 @@ npm run start:dev           # API en http://localhost:3000
 | `npm run build` | Compila TypeScript a `dist/` |
 | `npm run start:prod` | Ejecuta la versión compilada (`node dist/main`) |
 | `npm run lint` | Linter (`oxlint`) sobre `src/` y `test/` |
+| `npm run typecheck` | Chequeo de tipos de **todo** el proyecto, specs incluidos (`tsc --noEmit`) |
 | `npm test` | Tests unitarios + tests HTTP con mocks (no tocan la base real) |
 | `npm run test:e2e` | Sólo los e2e de `test/` (capa HTTP, con `supertest`) |
 | `node scripts/upload-default-avatar.js` | Sube la imagen de perfil por defecto a Cloudinary e imprime su URL |
@@ -965,4 +966,5 @@ curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authoriz
 - [x] Validación de query (`ListarPublicacionesDto`) y de body (`CreatePublicacionDto`)
 - [x] Tests: unitarios del servicio y del guard + e2e de la capa HTTP (`npm test`, `npm run test:e2e`)
 - [x] Lint (`npm run lint`) y build (`npm run build`) sin errores
+- [x] Chequeo de tipos de todo el proyecto, specs incluidos (`npm run typecheck`)
 - [ ] Comentarios → Sprint #3 (backend)

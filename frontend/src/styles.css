@@ -236,6 +236,64 @@ textarea.campo__control {
   }
 }
 
+/* ---------- archivos e imágenes ---------- */
+/* Los usan el registro (foto de perfil) y el compositor del feed (foto del ave). */
+.campo__archivo {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.campo__archivo::file-selector-button {
+  margin-right: 0.75rem;
+  padding: 0.5rem 1rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--cielo-700);
+  background: var(--cielo-100);
+  border: 1.5px solid var(--cielo-300);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.campo__archivo::file-selector-button:hover {
+  background: var(--cielo-200);
+}
+
+.vista-previa {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background: var(--cielo-50);
+  border: 1px dashed var(--cielo-300);
+  border-radius: var(--radio-chico);
+}
+
+.vista-previa img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  background: var(--blanco);
+  border: 2px solid var(--cielo-300);
+  border-radius: 50%;
+}
+
+/* La foto de una publicación no es un avatar: va rectangular y más grande. */
+.vista-previa--foto img {
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radio-chico);
+}
+
+.vista-previa__nombre {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  word-break: break-all;
+}
+
 /* ---------- botones ---------- */
 .boton {
   display: inline-flex;
@@ -284,6 +342,16 @@ textarea.campo__control {
   color: var(--cielo-700);
   background: var(--cielo-100);
   border-color: var(--cielo-400);
+}
+
+.boton--peligro {
+  color: var(--blanco);
+  background: var(--error);
+}
+
+.boton--peligro:hover:not(:disabled) {
+  color: var(--blanco);
+  background: #7f1d1d;
 }
 
 .boton--chico {

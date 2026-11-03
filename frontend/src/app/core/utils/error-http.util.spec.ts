@@ -48,6 +48,24 @@ describe('mensajesDeError', () => {
     expect(mensajeDeError(error)).toBe('Usuario/correo o contraseña incorrectos.');
   });
 
+  it('en una ruta protegida (contexto sesion) el 401 avisa que la sesión expiró', () => {
+    const error = new HttpErrorResponse({
+      status: 401,
+      error: { statusCode: 401, message: 'Unauthorized' },
+    });
+
+    expect(mensajeDeError(error, 'sesion')).toContain('Tu sesión expiró');
+  });
+
+  it('conserva el mensaje del backend en un 403 (no sos el autor)', () => {
+    const error = new HttpErrorResponse({
+      status: 403,
+      error: { statusCode: 403, message: 'No tenés permiso para eliminar esta publicación' },
+    });
+
+    expect(mensajeDeError(error, 'sesion')).toBe('No tenés permiso para eliminar esta publicación');
+  });
+
   it('cae en el mensaje genérico con un error que no es HTTP', () => {
     expect(mensajeDeError(new Error('boom'))).toContain('error inesperado');
   });

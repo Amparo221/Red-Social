@@ -1,0 +1,92 @@
+/* Feed: una sola columna angosta, centrada, como las tarjetas del registro. */
+.feed {
+  width: min(680px, 100%);
+  margin-inline: auto;
+}
+
+.feed__encabezado {
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+.feed__bajada {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--texto-suave);
+}
+
+/* Barra con el total y los filtros; se pega arriba al hacer scroll. */
+.feed__barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.feed__total {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  padding: 0.35rem 0.85rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--cielo-700);
+  background: var(--blanco);
+  border: 1.5px solid var(--cielo-300);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.chip:hover {
+  background: var(--cielo-100);
+  border-color: var(--cielo-400);
+}
+
+/* El chip activo se distingue por color y por aria-pressed (lectores de pantalla). */
+.chip--activo,
+.chip--activo:hover {
+  color: var(--blanco);
+  background: var(--cielo-600);
+  border-color: var(--cielo-600);
+}
+
+.feed__estado,
+.feed__fin {
+  margin: 1.5rem 0;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.feed__vacio {
+  padding: 2rem;
+  text-align: center;
+}
+
+.feed__vacio p {
+  margin: 0;
+  color: var(--texto-suave);
+}
+
+/* La alerta de error del feed tiene el botón de reintentar al lado. */
+.feed .alerta button {
+  margin-top: 0.6rem;
+}

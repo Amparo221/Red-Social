@@ -29,7 +29,7 @@
           type="text"
           formControlName="nombre"
           autocomplete="given-name"
-          placeholder="Ana"
+          placeholder="Nombre"
           [attr.aria-invalid]="mensaje('nombre') !== null"
         />
         @if (mensaje('nombre'); as texto) {
@@ -45,7 +45,7 @@
           type="text"
           formControlName="apellido"
           autocomplete="family-name"
-          placeholder="Moreno"
+          placeholder="Apellido"
           [attr.aria-invalid]="mensaje('apellido') !== null"
         />
         @if (mensaje('apellido'); as texto) {
@@ -62,7 +62,7 @@
         type="email"
         formControlName="correo"
         autocomplete="email"
-        placeholder="ana@correo.com"
+        placeholder="tucorreo@gmail.com"
         [attr.aria-invalid]="mensaje('correo') !== null"
       />
       @if (mensaje('correo'); as texto) {
@@ -78,7 +78,7 @@
         type="text"
         formControlName="nombreUsuario"
         autocomplete="username"
-        placeholder="anamoreno"
+        placeholder="Tu nombre de usuario"
         [attr.aria-invalid]="mensaje('nombreUsuario') !== null"
       />
       <span class="campo__ayuda">3 a 30 caracteres, sin espacios. Se guarda en minúsculas.</span>

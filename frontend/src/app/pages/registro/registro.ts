@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { mensajesDeError } from '../../core/utils/error-http.util';
+import { validarImagen } from '../../core/utils/imagen.util';
 
 type NombreCampo =
   | 'nombre'
@@ -52,14 +53,12 @@ const MENSAJES: Record<NombreCampo, Reglas> = {
   },
 };
 
-const TAMANIO_MAXIMO_IMAGEN = 5 * 1024 * 1024; // 5 MB, igual que el FileInterceptor del backend.
-const TIPOS_IMAGEN_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
 
 @Component({
   selector: 'app-registro',
   imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './registro.html',
-  styleUrl: './registro.css',
 })
 export class Registro implements OnDestroy {
   private readonly auth = inject(AuthService);
@@ -126,7 +125,7 @@ export class Registro implements OnDestroy {
     this.auth.registrar(this.formulario.getRawValue(), this.archivo()).subscribe({
       next: () => {
         this.enviando.set(false);
-        void this.router.navigate(['/inicio'], { queryParams: { bienvenida: 1 } });
+        void this.router.navigate(['/publicaciones'], { queryParams: { bienvenida: 1 } });
       },
       error: (error: unknown) => {
         this.enviando.set(false);
@@ -150,15 +149,11 @@ export class Registro implements OnDestroy {
     }
 
     // Se valida también en el navegador para no subir 5 MB al pedo: el backend
-    // lo vuelve a validar con el FileInterceptor.
-    if (!TIPOS_IMAGEN_PERMITIDOS.includes(archivo.type)) {
-      this.errorImagen.set('La imagen debe ser JPG, PNG, WEBP o GIF.');
-      input.value = '';
-      return;
-    }
-
-    if (archivo.size > TAMANIO_MAXIMO_IMAGEN) {
-      this.errorImagen.set('La imagen no puede superar los 5 MB.');
+    // lo vuelve a validar con el FileInterceptor. La misma utilidad usa el
+    // compositor del feed, así los dos formularios avisan igual.
+    const error = validarImagen(archivo);
+    if (error) {
+      this.errorImagen.set(error);
       input.value = '';
       return;
     }

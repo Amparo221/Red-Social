@@ -44,6 +44,10 @@ const documento = (extra: Record<string, unknown> = {}, populado = true) => ({
   likes: [] as Types.ObjectId[],
   cantidadLikes: 0,
   eliminado: false,
+  // El esquema la declara como `Date | null` y el servicio la completa al dar
+  // de baja; el mock tiene que declararla para que el tipo del documento
+  // simulado coincida con el real (si falta, `tsc` marca TS2339 al leerla).
+  fechaEliminacion: null as Date | null,
   createdAt: new Date('2026-10-01T10:00:00.000Z'),
   updatedAt: new Date('2026-10-01T10:00:00.000Z'),
   populated: jest.fn().mockReturnValue(populado ? new Types.ObjectId(ID_AUTOR) : undefined),

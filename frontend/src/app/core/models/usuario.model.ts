@@ -18,6 +18,15 @@ export interface Usuario {
   updatedAt?: string;
 }
 
+/**
+ * Lo que devuelven /auth/login y /auth/registro: el usuario público + el JWT.
+ * El token se guarda junto con el usuario para no tener dos claves en el
+ * navegador (y para poder restaurar la sesión completa con un F5).
+ */
+export interface Sesion extends Usuario {
+  token: string;
+}
+
 /** POST /auth/login: el identificador puede ser el correo o el nombre de usuario. */
 export interface Credenciales {
   identificador: string;
@@ -49,4 +58,14 @@ export const AVATAR_POR_DEFECTO = 'avatar-por-defecto.svg';
 export function urlAvatar(usuario: Pick<Usuario, 'imagenPerfilUrl'> | null | undefined): string {
   const url = usuario?.imagenPerfilUrl?.trim();
   return url ? url : AVATAR_POR_DEFECTO;
+}
+
+/**
+ * El backend permite borrar una publicación si sos el autor **o** administrador
+ * (ver PublicacionesService.eliminar). El front usa lo mismo para decidir si
+ * muestra el botón. Los perfiles válidos están en
+ * backend/src/usuarios/schemas/usuario.schema.ts: 'usuario' | 'administrador'.
+ */
+export function esAdministrador(usuario: Pick<Usuario, 'perfil'> | null | undefined): boolean {
+  return usuario?.perfil === 'administrador';
 }

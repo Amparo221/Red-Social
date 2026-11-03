@@ -1,6 +1,6 @@
 <header class="cabecera">
   <div class="contenedor cabecera__contenido">
-    <a class="marca" [routerLink]="auth.estaLogueado() ? '/inicio' : '/login'">
+    <a class="marca" [routerLink]="auth.estaLogueado() ? '/publicaciones' : '/login'">
       <img class="marca__icono" src="identibird.png" alt="" width="38" height="38" />
       <span>Identi<span class="marca__acento">Bird</span></span>
     </a>
@@ -11,6 +11,13 @@
           <img class="avatar avatar--chico" [src]="avatar()" alt="Tu foto de perfil" />
           <span>Hola, <strong>&#64;{{ usuario.nombreUsuario }}</strong></span>
         </span>
+        <a
+          class="boton boton--secundario boton--chico"
+          routerLink="/publicaciones"
+          routerLinkActive="activo"
+        >
+          Publicaciones
+        </a>
         <a class="boton boton--secundario boton--chico" routerLink="/inicio" routerLinkActive="activo">
           Mi perfil
         </a>
@@ -32,5 +39,5 @@
 </main>
 
 <footer class="pie">
-  <div class="contenedor"><strong>IdentiBird</strong> · Sprint 1 · Angular + NestJS</div>
+  <div class="contenedor"><strong>IdentiBird</strong> · Sprint 2 · Angular + NestJS</div>
 </footer>
