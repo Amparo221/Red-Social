@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
@@ -13,10 +14,22 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Usuario, UsuarioDocument } from '../usuarios/schemas/usuario.schema';
 import { toUsuarioResponse, UsuarioResponse } from '../usuarios/utils/usuario-response.util';
 import { RegisterDto } from './dto/register.dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 const SALT_ROUNDS = 10;
 const CREDENCIALES_INVALIDAS = 'Usuario/correo o contraseña incorrectos';
 const CLAVE_DUPLICADA = 11000;
+
+/**
+ * Respuesta de registro/login: el usuario público + el JWT.
+ *
+ * El token se agrega como un campo más en vez de envolver la respuesta
+ * (`{ usuario, token }`) para no romper al front del Sprint #1, que ya guarda
+ * el usuario tal cual lo recibe.
+ */
+export interface UsuarioConToken extends UsuarioResponse {
+  token: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -26,9 +39,10 @@ export class AuthService {
     @InjectModel(Usuario.name) private readonly usuarioModel: Model<UsuarioDocument>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async registrar(registerDto: RegisterDto, file?: Express.Multer.File): Promise<UsuarioResponse> {
+  async registrar(registerDto: RegisterDto, file?: Express.Multer.File): Promise<UsuarioConToken> {
     // Separamos la contraseña: el resto son los datos que se guardan tal cual.
     const { password, ...datos } = registerDto;
 
@@ -61,8 +75,9 @@ export class AuthService {
         perfil: 'usuario',
       });
 
-      // 5) Devolvemos la forma pública (sin password, sin __v).
-      return toUsuarioResponse(usuario);
+      // 5) Devolvemos la forma pública (sin password, sin __v) + el token: al
+      //    registrarse el usuario ya queda logueado.
+      return this.conToken(toUsuarioResponse(usuario));
     } catch (error) {
       // Si dos registros simultáneos pasan el chequeo anterior, el índice unique
       // de Mongo frena al segundo con el código 11000.
@@ -78,7 +93,7 @@ export class AuthService {
     }
   }
 
-  async login(identificador: string, passwordPlano: string): Promise<UsuarioResponse> {
+  async login(identificador: string, passwordPlano: string): Promise<UsuarioConToken> {
     // `identificador` puede ser el correo o el nombre de usuario. Los dos se
     // guardan en minúsculas, así que normalizamos también lo que llega por el
     // body: el login no distingue mayúsculas ni espacios sobrantes.
@@ -105,7 +120,22 @@ export class AuthService {
       throw new UnauthorizedException(CREDENCIALES_INVALIDAS);
     }
 
-    return toUsuarioResponse(usuario);
+    return this.conToken(toUsuarioResponse(usuario));
+  }
+
+  /**
+   * Firma el JWT con los datos mínimos que el guard necesita para identificar
+   * al usuario en los próximos requests (id, nombre de usuario y perfil).
+   * El vencimiento y el secret los pone el JwtModule desde el .env.
+   */
+  private conToken(usuario: UsuarioResponse): UsuarioConToken {
+    const payload: JwtPayload = {
+      sub: usuario.id,
+      nombreUsuario: usuario.nombreUsuario,
+      perfil: usuario.perfil,
+    };
+
+    return { ...usuario, token: this.jwtService.sign(payload) };
   }
 
   private async verificarDisponibilidad(correo: string, nombreUsuario: string): Promise<void> {

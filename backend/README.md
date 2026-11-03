@@ -1,17 +1,25 @@
-# Red Social — Backend (Sprint #1)
+# Red Social — Backend (Sprints #1 y #2)
 
 API REST de una red social, desarrollada con **NestJS + MongoDB Atlas + Cloudinary**.
 
-Este repositorio implementa el **Sprint #1 del backend**:
+Este repositorio implementa los **Sprints #1 y #2 del backend**:
 
-- **Registro de usuarios** (`POST /api/auth/registro`): validación de los datos, foto de perfil
-  opcional subida a Cloudinary y contraseña encriptada con bcrypt.
-- **Login** (`POST /api/auth/login`) usando el correo **o** el nombre de usuario.
+- **Sprint #1 — Usuarios**
+  - **Registro de usuarios** (`POST /api/auth/registro`): validación de los datos, foto de perfil
+    opcional subida a Cloudinary y contraseña encriptada con bcrypt.
+  - **Login** (`POST /api/auth/login`) usando el correo **o** el nombre de usuario.
+- **Sprint #2 — Publicaciones**
+  - **Alta de publicación** (`POST /api/publicaciones`) con imagen opcional (Cloudinary) y datos del
+    ave: `nombreComun` / `nombreCientifico`.
+  - **Feed** (`GET /api/publicaciones`) con paginación (`offset`/`limit`), orden por **fecha** o por
+    **cantidad de me gusta**, filtro por autor y `populate` del usuario.
+  - **Me gusta**: `POST /api/publicaciones/:id/like` y `DELETE /api/publicaciones/:id/like`.
+  - **Baja lógica** (`DELETE /api/publicaciones/:id`) sólo para el autor o un administrador.
 
-> ⚠️ El **JWT (token de sesión) no forma parte de este sprint**: se implementa en el Sprint #4 del
-> backend y lo consume el Sprint #3 del frontend. En
-> [Preparado para los próximos sprints](#preparado-para-los-próximos-sprints) queda documentado
-> dónde va a entrar, pero sin implementarse.
+> 🔐 **JWT (alcance de este sprint):** los likes y la baja necesitan saber *quién* hace el request, así
+> que el login ya devuelve un `token` y las rutas de publicaciones exigen `Authorization: Bearer ...`.
+> Es el mínimo indispensable; el Sprint #4 del backend completa el resto (refresh, roles, etc.).
+
 
 ---
 
@@ -24,6 +32,7 @@ Este repositorio implementa el **Sprint #1 del backend**:
 | **MongoDB Atlas + Mongoose** | Base de datos en la nube y ODM (esquemas, modelos, `populate`) |
 | **Cloudinary** | Almacenamiento de las imágenes de perfil (con CDN) |
 | **bcrypt** | Hash de contraseñas con salt |
+| **@nestjs/jwt** | Firma y verificación del token de sesión (`JwtModule` + `JwtService`) |
 | **class-validator + class-transformer** | Validación y normalización de los datos que llegan |
 | **Multer** (`@nestjs/platform-express`) | Recepción del archivo en `multipart/form-data` (en memoria) |
 
@@ -54,6 +63,7 @@ npm run start:dev           # API en http://localhost:3000
 | `npm run start:prod` | Ejecuta la versión compilada (`node dist/main`) |
 | `npm run lint` | Linter (`oxlint`) sobre `src/` y `test/` |
 | `npm test` | Tests unitarios + tests HTTP con mocks (no tocan la base real) |
+| `npm run test:e2e` | Sólo los e2e de `test/` (capa HTTP, con `supertest`) |
 | `node scripts/upload-default-avatar.js` | Sube la imagen de perfil por defecto a Cloudinary e imprime su URL |
 
 ---
@@ -72,6 +82,8 @@ Archivo `.env` en la raíz del backend (**no se sube al repositorio**, está en 
 | `API_SECRET` | `F4p-Bk2-...` | Credencial secreta de Cloudinary (nunca se sube al repo) |
 | `PORT` | `3000` | Puerto del servidor |
 | `DEFAULT_AVATAR_URL` | `https://res.cloudinary.com/.../default.jpg` | Imagen que se guarda cuando el usuario se registra sin foto |
+| `JWT_SECRET` | `9f2c...` (96 hex) | Secret con el que se **firman** los tokens. Debe ser largo, aleatorio y el mismo en todos los entornos: si cambia, todos los tokens emitidos dejan de valer. Se genera con `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+| `JWT_EXPIRES_IN` | `900` | Vencimiento del token **en segundos** (900 = 15 minutos). Si se omite se usa ese mismo valor |
 
 ### En Vercel
 
@@ -82,6 +94,11 @@ sólo se aplica fuera de Vercel (`if (!process.env.VERCEL)`), porque ahí el
 resolver lo administra la plataforma. La API se publica en `/api/...`: el
 `vercel.json` de la raíz reescribe `/api/(.*)` al servicio `backend`.
 
+> ⚠️ **`JWT_SECRET` es obligatorio también en Vercel.** Se lee con `getOrThrow()`, así que si falta
+> el deploy falla al arrancar (y el login devolvería 500). Cargalo en *Environment Variables* y volvé
+> a desplegar; si además querés conservar las sesiones abiertas en local y en producción, usá el
+> **mismo** secret en los dos lados.
+
 ---
 
 ## Estructura del proyecto
@@ -89,7 +106,8 @@ resolver lo administra la plataforma. La API se publica en `/api/...`: el
 ```
 backend/
 ├── assets/
-│   └── perfil_default.png        # imagen por defecto (fuente de verdad; se sube 1 vez a Cloudinary)
+│   ├── perfil_default.png        # imagen por defecto (fuente de verdad; se sube 1 vez a Cloudinary)
+│   └── publicaciones/            # 9 fotos de aves para probar las publicaciones a mano
 ├── scripts/
 │   └── upload-default-avatar.js  # sube esa imagen a Cloudinary e imprime su URL
 ├── src/
@@ -98,8 +116,13 @@ backend/
 │   ├── auth/
 │   │   ├── auth.module.ts
 │   │   ├── auth.controller.ts    # rutas HTTP (registro / login)
-│   │   ├── auth.service.ts       # lógica: duplicados, bcrypt, Cloudinary, login
-│   │   ├── auth.service.spec.ts  # tests unitarios (modelo y Cloudinary mockeados)
+│   │   ├── auth.service.ts       # lógica: duplicados, bcrypt, Cloudinary, login, firma del JWT
+│   │   ├── auth.service.spec.ts  # tests unitarios (modelo, Cloudinary y JwtService mockeados)
+│   │   ├── interfaces/jwt-payload.interface.ts  # qué viaja dentro del token
+│   │   ├── guards/
+│   │   │   ├── jwt-auth.guard.ts # valida el header Authorization: Bearer <token>
+│   │   │   └── jwt-auth.guard.spec.ts
+│   │   ├── decorators/usuario-actual.decorator.ts  # @UsuarioActual() → usuario del token
 │   │   └── dto/
 │   │       ├── register.dto.ts   # reglas de validación del registro
 │   │       └── login.dto.ts      # reglas de validación del login
@@ -109,10 +132,23 @@ backend/
 │   │   └── utils/usuario-response.util.ts  # forma pública del usuario (_id → id)
 │   ├── cloudinary/
 │   │   ├── cloudinary.module.ts
-│   │   └── cloudinary.service.ts # sube el buffer a Cloudinary
-│   └── publicaciones/            # vacío: se completa en el Sprint #2
+│   │   └── cloudinary.service.ts # sube el buffer a Cloudinary (perfiles / publicaciones)
+│   ├── common/
+│   │   ├── multer/imagen.multer.ts   # límite de 5 MB y formatos permitidos (compartido)
+│   │   └── pipes/parse-object-id.pipe.ts  # :id inválido → 400 (y no un 500 de Mongo)
+│   └── publicaciones/
+│       ├── publicaciones.module.ts
+│       ├── publicaciones.controller.ts   # rutas HTTP del feed
+│       ├── publicaciones.service.ts      # lógica: alta, feed, likes, baja lógica
+│       ├── publicaciones.service.spec.ts
+│       ├── schemas/publicacion.schema.ts
+│       ├── dto/
+│       │   ├── create-publicacion.dto.ts
+│       │   └── listar-publicaciones.dto.ts
+│       └── utils/publicacion-response.util.ts  # forma pública + autor populado
 └── test/
-    └── auth.e2e-spec.ts          # pruebas de la capa HTTP (AuthService mockeado, sin DB)
+    ├── auth.e2e-spec.ts          # pruebas de la capa HTTP (AuthService mockeado, sin DB)
+    └── publicaciones.e2e-spec.ts # idem para el feed (guard y servicio mockeados)
 ```
 
 **Responsabilidad de cada módulo**
@@ -122,8 +158,8 @@ backend/
 | `AppModule` | Configuración global: carga el `.env` y la conexión a MongoDB; importa el resto de los módulos |
 | `UsuariosModule` | Define el **modelo** `Usuario` (`forFeature`) y lo **exporta** para que otros módulos lo usen |
 | `AuthModule` | Rutas de registro/login. Importa `UsuariosModule` (modelo) y `CloudinaryModule` (imágenes) |
-| `CloudinaryModule` | Provee `CloudinaryService` (subida de archivos) |
-| `PublicacionesModule` | Reservado para el Sprint #2 |
+| `CloudinaryModule` | Provee `CloudinaryService` (subida de archivos a `red-social/perfiles` y `red-social/publicaciones`) |
+| `PublicacionesModule` | Modelo `Publicacion` + rutas del feed. Importa `AuthModule` (para el `JwtAuthGuard`) y `CloudinaryModule` |
 
 ---
 
@@ -151,6 +187,29 @@ AuthService.registrar() ....... lógica de negocio
    └── usuarioModel.create()   guarda el documento en Atlas
    ▼
 toUsuarioResponse() ........... arma la respuesta pública: { id, nombre, ... } (sin password ni __v)
+   ▼
+AuthService.conToken() ........ firma el JWT y lo agrega: { ...usuario, token }
+   ▼
+201 Created + JSON
+```
+
+Y el del feed, que pasa por el guard:
+
+```
+Cliente (Postman / Angular)
+   │  POST /api/publicaciones   (multipart/form-data + Authorization: Bearer <token>)
+   ▼
+JwtAuthGuard ................. verify(token) → si falla: 401; si no: request.usuario = { id, perfil }
+   ▼
+ValidationPipe ............... valida el body contra CreatePublicacionDto
+   ▼
+FileInterceptor .............. Multer lee "imagen" a memoria (opcional, máx. 5 MB)
+   ▼
+@UsuarioActual() ............. el controller recibe el usuario del token (no del body)
+   ▼
+PublicacionesService.crear() . sube la imagen a Cloudinary + publicacionModel.create()
+   ▼
+toPublicacionResponse() ...... arma la respuesta con el autor populado
    ▼
 201 Created + JSON
 ```
@@ -328,10 +387,128 @@ constructor(private readonly configService: ConfigService) {
 - Cloudinary no acepta un `Buffer`: `buffer-to-stream` lo convierte en un stream que se conecta con
   `cloudinary.uploader.upload_stream(...)`. Cuando termina, se devuelve `result.secure_url`
   (la URL `https://` que se guarda en la base).
-- Todas las imágenes se guardan en la carpeta `red-social/perfiles`.
+- Las imágenes se guardan en Cloudinary en la carpeta que recibe `uploadImage(file, publicId?, carpeta)`:
+  `red-social/perfiles` (default, avatares) y `red-social/publicaciones` (fotos del feed).
 - Si Cloudinary falla, el error se loguea y se responde **500** (nunca 200).
 
-### 8) Errores y códigos HTTP
+### 8) JWT — quién hace el request
+
+Los likes y la baja de una publicación **necesitan saber quién** está llamando: sin identidad
+cualquiera podría borrar publicaciones ajenas. Por eso el login y el registro devuelven un token.
+
+```ts
+// auth.module.ts
+JwtModule.registerAsync({
+  inject: [ConfigService],
+  useFactory: (configService: ConfigService) => ({
+    secret: configService.getOrThrow<string>('JWT_SECRET'),
+    signOptions: { expiresIn: Number(configService.get<string>('JWT_EXPIRES_IN')) || 900 },
+  }),
+});
+```
+
+```ts
+// auth.service.ts — el token se AGREGA a la respuesta, no la envuelve
+private conToken(usuario: UsuarioResponse): UsuarioConToken {
+  const payload: JwtPayload = {
+    sub: usuario.id,               // id del usuario (convención `sub` = subject)
+    nombreUsuario: usuario.nombreUsuario,
+    perfil: usuario.perfil,
+  };
+
+  return { ...usuario, token: this.jwtService.sign(payload) };
+}
+```
+
+| Pieza | Para qué |
+|---|---|
+| `JwtModule.registerAsync` | Firma y verifica con `JWT_SECRET`; `expiresIn` en segundos (`900` = 15 min) |
+| `JwtPayload` (`interfaces/`) | Tipo de lo que viaja en el token: `sub`, `nombreUsuario`, `perfil` |
+| `JwtAuthGuard` (`guards/`) | Exige `Authorization: Bearer <token>`, verifica la firma y el vencimiento, y deja el usuario en `request.usuario` |
+| `@UsuarioActual()` (`decorators/`) | Atajo para recibir ese usuario como parámetro del controller |
+| `exports: [JwtAuthGuard, JwtModule]` | `PublicacionesModule` importa `AuthModule` y reutiliza el guard sin volver a configurar el secret |
+
+Puntos importantes:
+
+- **`{ ...usuario, token }` en vez de `{ usuario, token }`**: el front del Sprint #3 ya guarda la
+  respuesta del login tal cual, así que sumar un campo no rompe nada (cambio **aditivo**).
+- El **`sub` del token es la única fuente del id** para likes y bajas. Nunca se toma un `usuarioId`
+  del body o del query: ese dato lo podría falsificar cualquiera.
+- `verify()` falla tanto con una **firma inválida** como con un token **vencido**; los dos casos se
+  traducen a **401**.
+- Si falta `JWT_SECRET`, `getOrThrow()` corta el arranque. Es a propósito: es preferible un error
+  claro al levantar que emitir tokens firmados con `undefined`.
+
+### 9) Publicaciones — esquema, feed y likes
+
+**Esquema** (`publicaciones/schemas/publicacion.schema.ts`):
+
+| Campo | Tipo | Para qué |
+|---|---|---|
+| `titulo`, `descripcion` | string (obligatorios) | Contenido de la publicación |
+| `nombreComun`, `nombreCientifico` | string (opcional, default `''`) | Datos del ave fotografiada |
+| `imagenUrl` | string (default `''`) | URL de Cloudinary o vacío si publicó sólo texto |
+| `usuario` | `ObjectId` + `ref: 'Usuario'` | Autor. Se guarda la **referencia** y se resuelve con `populate` |
+| `likes` | `ObjectId[]` | Un elemento por usuario: el propio array garantiza un like por persona |
+| `cantidadLikes` | number (default `0`) | Espejo de `likes.length` para **ordenar por índice** |
+| `eliminado`, `fechaEliminacion` | boolean / Date | Baja **lógica** |
+
+Índices creados:
+
+```ts
+PublicacionSchema.index({ eliminado: 1, createdAt: -1 });      // feed por fecha
+PublicacionSchema.index({ eliminado: 1, cantidadLikes: -1 });  // feed por likes
+PublicacionSchema.index({ usuario: 1, eliminado: 1, createdAt: -1 }); // perfil de un usuario
+```
+
+**Me gusta atómico** — `findOneAndUpdate` con el "no existe todavía" dentro del filtro:
+
+```ts
+const actualizada = await this.publicacionModel.findOneAndUpdate(
+  { _id: id, eliminado: false, likes: { $ne: usuario.id } },   // sólo si NO estaba
+  { $addToSet: { likes: usuario.id }, $inc: { cantidadLikes: 1 } },
+  { new: true },
+);
+
+if (!actualizada) {
+  throw await this.errorDeLike(id, 'Ya le diste me gusta a esta publicación');
+}
+```
+
+- Si el like ya estaba, el filtro **no matchea** y devuelve `null` → **409**. Con un
+  "leer → verificar → guardar" dos requests simultáneos podrían pasar los dos y el contador quedaría
+  en 2.
+- `null` puede significar dos cosas distintas: la publicación no existe (**404**) o el like ya estaba
+  (**409**). Una consulta `exists()` extra decide cuál responder.
+- Quitar el like es el mismo patrón al revés: filtro `likes: usuario.id` + `$pull`.
+- `cantidadLikes` se mueve con `$inc`, nunca se recalcula desde el array.
+
+**Baja lógica**: `eliminado: true` + `fechaEliminacion`, y el feed filtra **siempre**
+`{ eliminado: false }`. El documento sigue en la base (no se pierde el historial ni los likes).
+
+**Feed con `populate` y paginación**:
+
+```ts
+const [total, documentos] = await Promise.all([
+  this.publicacionModel.countDocuments(filtro),
+  this.publicacionModel
+    .find(filtro)
+    .sort(this.armarOrden(listarDto.orden))
+    .skip(listarDto.offset)
+    .limit(listarDto.limit)
+    .populate({ path: 'usuario', select: 'nombre apellido nombreUsuario imagenPerfilUrl' })
+    .exec(),
+]);
+```
+
+- `select` en el `populate`: del usuario se traen **sólo** los datos públicos (nunca `correo` ni el hash).
+- `total` + `offset` + `limit` permiten armar `hayMas`, que es lo que el front usa para el scroll infinito.
+- El orden por `likes` desempata por `createdAt`: sin eso, dos páginas seguidas pueden repetir o
+  saltear publicaciones cuando hay muchos empates.
+- La respuesta incluye `likeado` por publicación: el front no tiene que cruzar datos para pintar el
+  corazón lleno o vacío.
+
+### 10) Errores y códigos HTTP
 
 | Situación | Código | Respuesta |
 |---|---|---|
@@ -343,6 +520,16 @@ constructor(private readonly configService: ConfigService) {
 | Correo / usuario repetido | **409** | `El correo ya está registrado` / `El nombre de usuario ya está en uso` |
 | Credenciales incorrectas | **401** | `Usuario/correo o contraseña incorrectos` |
 | Falla Cloudinary o la base | **500** | Mensaje genérico; el detalle queda en el log del servidor |
+| Falta el token o está vencido | **401** | `Falta el token de autenticación` / `El token es inválido o expiró` |
+| Publicación creada | **201** | La publicación con el autor ya populado |
+| Like agregado | **201** | `{ id, cantidadLikes, likeado: true }` |
+| Like quitado | **200** | `{ id, cantidadLikes, likeado: false }` |
+| Like repetido / like inexistente al quitarlo | **409** | `Ya le diste me gusta a esta publicación` / `No habías dado me gusta...` |
+| Baja lógica correcta | **200** | `{ id, eliminado: true, fechaEliminacion }` |
+| Baja de una publicación ajena sin ser administrador | **403** | `Solo el autor de la publicación o un administrador pueden eliminarla` |
+| Publicación inexistente o ya eliminada | **404** | `La publicación no existe o fue eliminada` |
+| `:id` de la ruta con formato inválido | **400** | `El id no tiene un formato válido` (`ParseObjectIdPipe`) |
+| `offset`/`limit`/`orden`/`usuario` inválidos | **400** | Detalle por campo (`ListarPublicacionesDto`) |
 
 ---
 
@@ -381,9 +568,13 @@ Respuesta **201**:
   "imagenPerfilUrl": "https://res.cloudinary.com/nxux17x7/image/upload/red-social/perfiles/abc123.jpg",
   "perfil": "usuario",
   "createdAt": "2026-10-28T12:00:00.000Z",
-  "updatedAt": "2026-10-28T12:00:00.000Z"
+  "updatedAt": "2026-10-28T12:00:00.000Z",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NzEyZjNjOS4uLiJ9.abc123"
 }
 ```
+
+El campo **`token`** (JWT) se agregó en el Sprint #2: se manda en las rutas del feed como
+`Authorization: Bearer <token>`.
 
 ### `POST /api/auth/login`
 
@@ -397,7 +588,93 @@ Respuesta **201**:
 ```
 
 `identificador` acepta el **nombre de usuario** o el **correo**.
-Respuesta **200**: el mismo objeto público del registro (sin `password`).
+Respuesta **200**: el mismo objeto público del registro (sin `password`, con `token`).
+
+### Rutas de publicaciones (todas requieren `Authorization: Bearer <token>`)
+
+> Sin el header, cualquiera de estas rutas responde **401**.
+
+#### `POST /api/publicaciones`
+
+`Content-Type: multipart/form-data` (la imagen es un archivo, todo lo demás texto).
+
+| Campo | Tipo | ¿Obligatorio? | Ejemplo |
+|---|---|---|---|
+| `titulo` | texto | sí (máx. 100) | `Colibrí en el jardín` |
+| `descripcion` | texto | sí (máx. 500) | `Lo vi a la mañana` |
+| `nombreComun` | texto | no (máx. 80) | `Colibrí garganta rubí` |
+| `nombreCientifico` | texto | no (máx. 80) | `Archilochus colubris` |
+| `imagen` | archivo | no | `ave.jpg` (JPG/PNG/WEBP/GIF, máx. 5 MB) |
+
+El **autor sale del token**, no del body: no hay campo `usuario` en el formulario.
+Respuesta **201**:
+
+```json
+{
+  "id": "6721a4f0c1d2e3f4a5b6c7d8",
+  "titulo": "Colibrí en el jardín",
+  "descripcion": "Lo vi a la mañana",
+  "nombreComun": "Colibrí garganta rubí",
+  "nombreCientifico": "Archilochus colubris",
+  "imagenUrl": "https://res.cloudinary.com/nxux17x7/image/upload/red-social/publicaciones/abc123.jpg",
+  "usuario": {
+    "id": "6712f3c9a8b4d5e6f7a8b9c0",
+    "nombre": "Ana",
+    "apellido": "Moreno",
+    "nombreUsuario": "anamoreno",
+    "imagenPerfilUrl": "https://res.cloudinary.com/nxux17x7/image/upload/red-social/perfiles/ana.jpg"
+  },
+  "cantidadLikes": 0,
+  "likeado": false,
+  "eliminado": false,
+  "createdAt": "2026-11-02T12:00:00.000Z",
+  "updatedAt": "2026-11-02T12:00:00.000Z"
+}
+```
+
+#### `GET /api/publicaciones`
+
+| Query | Default | Reglas |
+|---|---|---|
+| `offset` | `0` | entero `>= 0` |
+| `limit` | `5` | entero entre `1` y `50` |
+| `orden` | `fecha` | `fecha` (más nuevas primero) o `likes` (más gustadas primero) |
+| `usuario` | — | ObjectId del autor, para ver el feed de un perfil |
+
+Respuesta **200**:
+
+```json
+{
+  "total": 12,
+  "offset": 0,
+  "limit": 5,
+  "orden": "fecha",
+  "hayMas": true,
+  "publicaciones": [ /* las claves de arriba, con "likeado" según quién consulta */ ]
+}
+```
+
+#### `POST /api/publicaciones/:id/like` → **201**
+
+```json
+{ "id": "6721a4f0c1d2e3f4a5b6c7d8", "cantidadLikes": 1, "likeado": true }
+```
+
+Si el usuario ya había dado me gusta → **409** (no se cuenta dos veces).
+
+#### `DELETE /api/publicaciones/:id/like` → **200**
+
+Mismo cuerpo con `likeado: false`. Si el like no existía → **409**.
+
+#### `DELETE /api/publicaciones/:id` → **200**
+
+Baja **lógica**; sólo el autor o un administrador (**403** si no). Devuelve:
+
+```json
+{ "id": "6721a4f0c1d2e3f4a5b6c7d8", "eliminado": true, "fechaEliminacion": "2026-11-02T12:30:00.000Z" }
+```
+
+Después de la baja, la publicación **no aparece** en `GET /api/publicaciones`.
 
 ---
 
@@ -446,7 +723,16 @@ la variable de entorno: no hay que tocar código.
 | **Seguridad básica** | bcrypt, `select: false`, `whitelist: true`, límite de 5 MB y filtro de tipo de archivo |
 | **Manejo de errores HTTP** | `ConflictException`, `UnauthorizedException`, `BadRequestException`, `InternalServerErrorException` |
 | **CORS** | `app.enableCors()` para el front en otro origen |
-| **Testing** | `auth.service.spec.ts` (unitario con mocks) y `test/auth.e2e-spec.ts` (capa HTTP, sin base real) |
+| **Testing** | `*.spec.ts` unitarios con mocks y `test/*.e2e-spec.ts` (capa HTTP, sin base real) |
+| **Guard** | `JwtAuthGuard`: decide si el request sigue (token válido) o se corta con 401 |
+| **Decorador de parámetro propio** | `@UsuarioActual()`: lee `request.usuario` y lo inyecta en el controller |
+| **Pipe propio** | `ParseObjectIdPipe`: valida el `:id` de la ruta → 400 en vez de 500 |
+| **Autenticación con JWT** | `JwtModule.registerAsync` + `@nestjs/jwt` (firma con secret del `.env`) |
+| **Relaciones con `populate`** | `Publicacion.usuario` (`ref: 'Usuario'`) resuelto con `select` acotado |
+| **Baja lógica** | `eliminado` + `fechaEliminacion`; el feed siempre filtra `{ eliminado: false }` |
+| **Índices** | `PublicacionSchema.index(...)` para los dos órdenes del feed |
+| **Operadores atómicos** | `$addToSet`, `$pull`, `$inc` en `findOneAndUpdate` (likes sin condiciones de carrera) |
+| **Paginación** | `countDocuments` + `skip`/`limit` + `hayMas` en la respuesta |
 
 ---
 
@@ -517,6 +803,78 @@ curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/
 **8. En Atlas:** la base `redsocial` aparece sola en el cluster (Mongo la crea al insertar el primer
 documento), dentro de la colección `usuarios`, con `password` guardado como hash `$2b$10$...`.
 
+**9. Guardar el token del login para las pruebas del feed**
+
+```powershell
+$login = curl.exe -s -X POST http://localhost:3000/api/auth/login `
+  -H "Content-Type: application/json" `
+  -d '{\"identificador\":\"anamoreno\",\"password\":\"Segura123\"}' | ConvertFrom-Json
+$TOKEN = $login.token
+$TOKEN.Substring(0, 20)   # empieza con eyJhbGciOi...
+```
+
+**10. Crear una publicación sin imagen → 201**
+
+```powershell
+curl.exe -s -X POST http://localhost:3000/api/publicaciones `
+  -H "Authorization: Bearer $TOKEN" `
+  -F "titulo=Colibrí en el jardín" -F "descripcion=Lo vi a la mañana" `
+  -F "nombreComun=Colibrí garganta rubí" -F "nombreCientifico=Archilochus colubris"
+```
+
+**11. Crear una publicación con imagen → 201** (`imagenUrl` debe ser de Cloudinary,
+carpeta `red-social/publicaciones`)
+
+```powershell
+curl.exe -s -X POST http://localhost:3000/api/publicaciones `
+  -H "Authorization: Bearer $TOKEN" `
+  -F "titulo=Picaflor verde" -F "descripcion=En el parque" `
+  -F "imagen=@C:/ruta/ave.jpg"
+```
+
+**12. Feed con paginación y orden → 200**
+
+```powershell
+curl.exe -s "http://localhost:3000/api/publicaciones?offset=0&limit=5&orden=fecha" -H "Authorization: Bearer $TOKEN"
+curl.exe -s "http://localhost:3000/api/publicaciones?offset=0&limit=5&orden=likes" -H "Authorization: Bearer $TOKEN"
+curl.exe -s "http://localhost:3000/api/publicaciones?usuario=<id-del-usuario>"    -H "Authorization: Bearer $TOKEN"
+```
+
+Casos que tienen que dar **400**: `?offset=abc`, `?limit=0`, `?limit=999`, `?orden=autor`,
+`?usuario=no-es-un-id`. Y **401** sin el header `Authorization`.
+
+**13. Like → 201, repetido → 409**
+
+```powershell
+$ID = "<id-de-la-publicacion>"
+curl.exe -s -X POST "http://localhost:3000/api/publicaciones/$ID/like" -H "Authorization: Bearer $TOKEN"
+# { "id": "...", "cantidadLikes": 1, "likeado": true }
+curl.exe -s -o NUL -w "%{http_code}" -X POST "http://localhost:3000/api/publicaciones/$ID/like" -H "Authorization: Bearer $TOKEN"
+# 409
+```
+
+**14. Quitar el like → 200, repetido → 409**
+
+```powershell
+curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID/like" -H "Authorization: Bearer $TOKEN"
+# { "id": "...", "cantidadLikes": 0, "likeado": false }
+curl.exe -s -o NUL -w "%{http_code}" -X DELETE "http://localhost:3000/api/publicaciones/$ID/like" -H "Authorization: Bearer $TOKEN"
+# 409
+```
+
+**15. Baja lógica:** con el token de **otro** usuario → **403**; con el del autor → **200**; después la
+publicación deja de aparecer en el feed (`GET`)
+
+```powershell
+curl.exe -s -o NUL -w "%{http_code}" -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authorization: Bearer $TOKEN_OTRO"
+# 403
+curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authorization: Bearer $TOKEN"
+# { "id": "...", "eliminado": true, "fechaEliminacion": "..." }
+```
+
+**16. En Atlas:** la colección `publicaciones` guarda `usuario` y `likes` como `ObjectId`, y
+`eliminado` pasa a `true` (el documento **no** se borra).
+
 **Si el login devuelve 401 con datos que parecen correctos**
 
 1. Confirmá en Atlas (`redsocial` → `usuarios`) que el documento existe y mirá el valor **exacto** de
@@ -534,15 +892,18 @@ documento), dentro de la colección `usuarios`, con `password` guardado como has
 
 ## Preparado para los próximos sprints
 
-- **Sprint #2 — Publicaciones:** `PublicacionesModule` ya está importado en `AppModule` (vacío). Solo
-  hay que agregar el esquema `Publicacion` con `@Prop({ type: Types.ObjectId, ref: 'Usuario' })`
-  y el `timestamps: true` que ya tienen los usuarios para ordenar por fecha.
-- **Sprint #3 — Frontend (Angular):** CORS habilitado y respuestas con `id` (no `_id`), así el front
-  puede tipar `Usuario { id: string; ... }` y mostrar `imagenPerfilUrl` directamente.
-- **Sprint #4 — JWT (backend):** el login de este sprint devuelve los datos del usuario; en el #4 se
-  agrega `JwtModule` y el `AuthService.login()` devuelve además `access_token` (payload
-  `{ sub: id, perfil }`), con un `AuthGuard` para proteger las rutas. **No se implementa acá** porque
-  el enunciado lo ubica más adelante.
+- **Sprint #3 — Frontend (Angular):** CORS habilitado, respuestas con `id` (no `_id`) y un contrato ya
+  definido para el feed (`total`, `hayMas`, `likeado`), así el front puede tipar
+  `Publicacion { id: string; ... }` y armar el scroll infinito sin adaptar nada.
+- **Sprint #3 — Comentarios (backend):** `PublicacionesModule` **exporta** `PublicacionesService`, así
+  que el módulo de comentarios puede inyectarlo y verificar que la publicación exista y no esté dada
+  de baja antes de crear un comentario.
+- **Sprint #4 — JWT completo:** el token ya está implementado (`JwtModule`, `JwtAuthGuard`,
+  `@UsuarioActual()`), payload `{ sub, nombreUsuario, perfil }` y vencimiento configurable. Queda para
+  el #4 lo que no pide este sprint: *refresh tokens*, revocación, y aplicar el guard a las rutas de
+  usuarios (`GET/PATCH /usuarios/:id`), que hoy siguen abiertas.
+- **Roles:** `JwtAuthGuard` ya expone `perfil`, y la baja de publicaciones acepta `administrador`. Un
+  `RolesGuard` con `@Roles('administrador')` sería el paso siguiente para administrar usuarios.
 
 ---
 
@@ -563,6 +924,16 @@ documento), dentro de la colección `usuarios`, con `password` guardado como has
 | D11 | `MONGODB_DB=redsocial` + `dbName` en `forRootAsync` | Sin esto Mongoose usaría la base `test`; Mongo crea `redsocial` al primer insert |
 | D12 | `timestamps: true` en el esquema | `createdAt` / `updatedAt` gratis, necesarios para el feed del Sprint #2 |
 | D13 | Guardado campo por campo (sin `...registerDto`) | Evita *mass assignment*: nadie se auto-asigna `perfil: 'administrador'` |
+| D14 | El login/registro devuelven `{ ...usuario, token }` | **Aditivo**: el front del Sprint #1 sigue leyendo el usuario igual, y las rutas nuevas usan el token |
+| D15 | El id del usuario para likes y bajas sale **solo del token** | Un `usuarioId` del body/query se puede falsificar; el token está firmado |
+| D16 | Likes con endpoints explícitos (`POST`/`DELETE`) | La consigna diferencia "dar" de "quitar" y así cada caso tiene su código: 201 / 200 / 409 |
+| D17 | `likes: ObjectId[]` + `cantidadLikes` denormalizado | Un like por usuario garantizado por el array; `cantidadLikes` permite ordenar por índice (con `$size` de agregación Mongo no lo usa) |
+| D18 | Like/unlike con `findOneAndUpdate` condicionado | Atómico: dos requests simultáneos no pueden contar el mismo like dos veces |
+| D19 | Baja **lógica** (`eliminado` + `fechaEliminacion`) | No se pierde el historial y el feed sólo tiene que filtrar `{ eliminado: false }` |
+| D20 | `ParseObjectIdPipe` en los `:id` | Un id mal escrito responde 400 y no el 500 que produce el `CastError` de Mongoose |
+| D21 | `limit` con **techo de 50** y default 5 | Evita que un `limit=100000` tumbe el servidor; el default achica el primer render |
+| D22 | El feed calcula **`likeado`** por publicación | El front no tiene que cruzar `likes` con el usuario logueado para pintar el corazón |
+| D23 | `JWT_EXPIRES_IN` en **segundos** | `expiresIn` de `jsonwebtoken` tipa `number | StringValue`; con segundos el valor del `.env` es siempre válido |
 
 ---
 
@@ -578,5 +949,20 @@ documento), dentro de la colección `usuarios`, con `password` guardado como has
 - [x] CORS habilitado
 - [x] `.env.example` y README en español
 - [x] Tests unitarios y de la capa HTTP (`npm test`), lint (`npm run lint`) y build (`npm run build`)
-- [ ] JWT → Sprint #4 (backend)
-- [ ] Publicaciones → Sprint #2 (backend)
+- [x] JWT mínimo (token en el login) → se completó en el Sprint #2 porque los likes lo necesitan
+
+## Estado del Sprint #2
+
+- [x] Esquema `Publicacion` con autor referenciado (`populate`), bajas lógicas y tres índices
+- [x] `POST /api/publicaciones` con imagen **opcional** a Cloudinary (`red-social/publicaciones`)
+- [x] Campos opcionales `nombreComun` y `nombreCientifico`
+- [x] `GET /api/publicaciones` con `offset`/`limit`, orden `fecha`/`likes` y filtro por `usuario`
+- [x] `likeado` por publicación y `hayMas` para el scroll infinito
+- [x] `POST` / `DELETE /api/publicaciones/:id/like` (201 / 200, 409 si se repite)
+- [x] `DELETE /api/publicaciones/:id` con baja lógica y permiso de autor o administrador (403 / 404)
+- [x] `JwtAuthGuard` protegiendo todas las rutas del feed (401 sin token o vencido)
+- [x] `ParseObjectIdPipe`: `:id` inválido → 400
+- [x] Validación de query (`ListarPublicacionesDto`) y de body (`CreatePublicacionDto`)
+- [x] Tests: unitarios del servicio y del guard + e2e de la capa HTTP (`npm test`, `npm run test:e2e`)
+- [x] Lint (`npm run lint`) y build (`npm run build`) sin errores
+- [ ] Comentarios → Sprint #3 (backend)

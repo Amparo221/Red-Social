@@ -1,5 +1,6 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
@@ -9,6 +10,7 @@ import { AuthService } from './auth.service';
 
 const AVATAR_POR_DEFECTO = 'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/default.png';
 const IMAGEN_SUBIDA = 'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/nueva.png';
+const TOKEN = 'token-de-prueba';
 
 const registroValido = {
   nombre: 'Ana',
@@ -32,6 +34,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let usuarioModel: { exists: jest.Mock; findOne: jest.Mock; create: jest.Mock };
   let cloudinaryService: { uploadImage: jest.Mock };
+  let jwtService: { sign: jest.Mock };
 
   const darResultadoDeFindOne = (usuario: unknown) => ({
     select: jest.fn().mockResolvedValue(usuario),
@@ -46,12 +49,15 @@ describe('AuthService', () => {
       ),
     };
     cloudinaryService = { uploadImage: jest.fn().mockResolvedValue(IMAGEN_SUBIDA) };
+    // No firmamos un JWT real: alcanza con comprobar QUÉ datos se firman.
+    jwtService = { sign: jest.fn().mockReturnValue(TOKEN) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: getModelToken(Usuario.name), useValue: usuarioModel },
         { provide: CloudinaryService, useValue: cloudinaryService },
+        { provide: JwtService, useValue: jwtService },
         {
           provide: ConfigService,
           useValue: {
@@ -80,6 +86,17 @@ describe('AuthService', () => {
       expect(resultado.id).toBe('507f1f77bcf86cd799439011');
       expect(resultado).not.toHaveProperty('password');
       expect(resultado).not.toHaveProperty('_id');
+    });
+
+    it('firma un token con el id, el nombre de usuario y el perfil', async () => {
+      const resultado = await service.registrar(registroValido);
+
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        sub: '507f1f77bcf86cd799439011',
+        nombreUsuario: 'anamoreno',
+        perfil: 'usuario',
+      });
+      expect(resultado.token).toBe(TOKEN);
     });
 
     it('sube la imagen a Cloudinary cuando el usuario adjunta un archivo', async () => {
@@ -130,6 +147,24 @@ describe('AuthService', () => {
       });
       expect(resultado.nombreUsuario).toBe('anamoreno');
       expect(resultado).not.toHaveProperty('password');
+    });
+
+    it('devuelve el token firmado para que el front lo use en los próximos requests', async () => {
+      const password = await hashValido();
+      usuarioModel.findOne.mockReturnValue(
+        darResultadoDeFindOne(
+          documentoGuardado({ ...registroValido, password, perfil: 'administrador' }),
+        ),
+      );
+
+      const resultado = await service.login('ana@correo.com', 'Segura123');
+
+      expect(resultado.token).toBe(TOKEN);
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        sub: '507f1f77bcf86cd799439011',
+        nombreUsuario: 'anamoreno',
+        perfil: 'administrador',
+      });
     });
 
     it('busca por el correo y el nombre de usuario sin distinguir mayúsculas', async () => {

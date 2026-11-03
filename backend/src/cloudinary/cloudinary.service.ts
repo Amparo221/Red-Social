@@ -5,6 +5,9 @@ import toStream = require('buffer-to-stream');
 
 const CARPETA_PERFILES = 'red-social/perfiles';
 
+/** Carpeta de Cloudinary donde viven las imágenes de las publicaciones. */
+export const CARPETA_PUBLICACIONES = 'red-social/publicaciones';
+
 @Injectable()
 export class CloudinaryService {
   private readonly logger = new Logger(CloudinaryService.name);
@@ -21,10 +24,17 @@ export class CloudinaryService {
 
   /**
    * Sube una imagen en memoria (Multer) a Cloudinary y devuelve su URL https.
+   *
+   * `carpeta` permite separar perfiles de publicaciones dentro de la misma
+   * cuenta; `publicId` sirve para reemplazar una imagen existente (perfil).
    */
-  async uploadImage(file: Express.Multer.File, publicId?: string): Promise<string> {
+  async uploadImage(
+    file: Express.Multer.File,
+    publicId?: string,
+    carpeta: string = CARPETA_PERFILES,
+  ): Promise<string> {
     try {
-      return await this.subirBuffer(file.buffer, publicId);
+      return await this.subirBuffer(file.buffer, carpeta, publicId);
     } catch (error) {
       this.logger.error(
         'Falló la subida a Cloudinary',
@@ -38,11 +48,11 @@ export class CloudinaryService {
    * Cloudinary espera un stream, no un Buffer: `buffer-to-stream` convierte el
    * archivo que Multer dejó en memoria y lo "pipes" al upload_stream.
    */
-  private subirBuffer(buffer: Buffer, publicId?: string): Promise<string> {
+  private subirBuffer(buffer: Buffer, carpeta: string, publicId?: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const upload = cloudinary.uploader.upload_stream(
         {
-          folder: CARPETA_PERFILES,
+          folder: carpeta,
           ...(publicId ? { public_id: publicId, overwrite: true, invalidate: true } : {}),
         },
         (error, result) => {

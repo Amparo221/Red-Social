@@ -1,4 +1,4 @@
-import { UsuarioDocument } from '../schemas/usuario.schema';
+import { Perfil, UsuarioDocument } from '../schemas/usuario.schema';
 
 // Forma pública de un usuario: nunca incluye el hash ni campos internos de
 // Mongo (_id, __v). El front trabaja con `id`.
@@ -11,7 +11,7 @@ export interface UsuarioResponse {
   fechaNacimiento: string;
   descripcion: string;
   imagenPerfilUrl: string;
-  perfil: string;
+  perfil: Perfil;
   createdAt?: Date;
   updatedAt?: Date;
 }
