@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Usuario } from '../usuarios/schemas/usuario.schema';
 import { AuthService } from './auth.service';
