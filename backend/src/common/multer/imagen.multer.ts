@@ -1,7 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
 
 export const TAMANIO_MAXIMO_IMAGEN = 5 * 1024 * 1024; // 5 MB
-export const TIPOS_IMAGEN_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+export const TIPOS_IMAGEN_PERMITIDOS = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+];
 
 /**
  * Opciones de Multer para las rutas que reciben una imagen opcional
@@ -23,7 +28,10 @@ export const OPCIONES_IMAGEN = {
     callback: (error: Error | null, aceptar: boolean) => void,
   ): void => {
     if (!TIPOS_IMAGEN_PERMITIDOS.includes(file.mimetype)) {
-      return callback(new BadRequestException('La imagen debe ser JPG, PNG, WEBP o GIF'), false);
+      return callback(
+        new BadRequestException('La imagen debe ser JPG, PNG, WEBP o GIF'),
+        false,
+      );
     }
 
     callback(null, true);

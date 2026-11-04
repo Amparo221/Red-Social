@@ -45,7 +45,11 @@ describe('JwtAuthGuard', () => {
   });
 
   it('acepta el esquema bearer en minúsculas', () => {
-    jwtService.verify.mockReturnValue({ sub: ID_USUARIO, nombreUsuario: 'ana', perfil: 'usuario' });
+    jwtService.verify.mockReturnValue({
+      sub: ID_USUARIO,
+      nombreUsuario: 'ana',
+      perfil: 'usuario',
+    });
     const { contexto } = contextoConHeader('bearer token-valido');
 
     expect(guard.canActivate(contexto)).toBe(true);
@@ -55,7 +59,9 @@ describe('JwtAuthGuard', () => {
     const { contexto } = contextoConHeader(undefined);
 
     expect(() => guard.canActivate(contexto)).toThrow(UnauthorizedException);
-    expect(() => guard.canActivate(contexto)).toThrow('Falta el token de autenticación');
+    expect(() => guard.canActivate(contexto)).toThrow(
+      'Falta el token de autenticación',
+    );
   });
 
   it('lanza 401 si el header no usa el esquema Bearer', () => {
@@ -71,7 +77,9 @@ describe('JwtAuthGuard', () => {
     const { contexto, request } = contextoConHeader('Bearer token-vencido');
 
     expect(() => guard.canActivate(contexto)).toThrow(UnauthorizedException);
-    expect(() => guard.canActivate(contexto)).toThrow('El token es inválido o expiró');
+    expect(() => guard.canActivate(contexto)).toThrow(
+      'El token es inválido o expiró',
+    );
     // Nunca se marca al request como autenticado.
     expect(request.usuario).toBeUndefined();
   });

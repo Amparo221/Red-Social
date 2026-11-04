@@ -8,7 +8,9 @@ import { Publicacion, PublicacionSchema } from './schemas/publicacion.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Publicacion.name, schema: PublicacionSchema }]),
+    MongooseModule.forFeature([
+      { name: Publicacion.name, schema: PublicacionSchema },
+    ]),
     CloudinaryModule,
     // Aporta el JwtAuthGuard (y con él el JwtService) que protege las rutas.
     AuthModule,
@@ -20,4 +22,3 @@ import { Publicacion, PublicacionSchema } from './schemas/publicacion.schema';
   exports: [PublicacionesService],
 })
 export class PublicacionesModule {}
-

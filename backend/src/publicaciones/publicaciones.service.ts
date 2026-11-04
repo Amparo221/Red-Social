@@ -9,9 +9,15 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { UsuarioAutenticado } from '../auth/interfaces/jwt-payload.interface';
-import { CARPETA_PUBLICACIONES, CloudinaryService } from '../cloudinary/cloudinary.service';
+import {
+  CARPETA_PUBLICACIONES,
+  CloudinaryService,
+} from '../cloudinary/cloudinary.service';
 import { CreatePublicacionDto } from './dto/create-publicacion.dto';
-import { ListarPublicacionesDto, OrdenPublicaciones } from './dto/listar-publicaciones.dto';
+import {
+  ListarPublicacionesDto,
+  OrdenPublicaciones,
+} from './dto/listar-publicaciones.dto';
 import { Publicacion, PublicacionDocument } from './schemas/publicacion.schema';
 import {
   CAMPOS_AUTOR,
@@ -49,7 +55,8 @@ export class PublicacionesService {
   private readonly logger = new Logger(PublicacionesService.name);
 
   constructor(
-    @InjectModel(Publicacion.name) private readonly publicacionModel: Model<PublicacionDocument>,
+    @InjectModel(Publicacion.name)
+    private readonly publicacionModel: Model<PublicacionDocument>,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
@@ -63,7 +70,11 @@ export class PublicacionesService {
     archivo?: Express.Multer.File,
   ): Promise<PublicacionResponse> {
     const imagenUrl = archivo
-      ? await this.cloudinaryService.uploadImage(archivo, undefined, CARPETA_PUBLICACIONES)
+      ? await this.cloudinaryService.uploadImage(
+          archivo,
+          undefined,
+          CARPETA_PUBLICACIONES,
+        )
       : '';
 
     try {
@@ -143,7 +154,10 @@ export class PublicacionesService {
    * Si dos requests iguales llegan a la vez, el segundo no matchea y responde
    * 409 (con leer-y-guardar los dos pasarían y el contador quedaría en 2).
    */
-  async darLike(id: string, usuario: UsuarioAutenticado): Promise<ResultadoLike> {
+  async darLike(
+    id: string,
+    usuario: UsuarioAutenticado,
+  ): Promise<ResultadoLike> {
     const actualizada = await this.publicacionModel
       .findOneAndUpdate(
         { _id: id, eliminado: false, likes: { $ne: usuario.id } },
@@ -153,7 +167,10 @@ export class PublicacionesService {
       .exec();
 
     if (!actualizada) {
-      throw await this.errorDeLike(id, 'Ya le diste me gusta a esta publicación');
+      throw await this.errorDeLike(
+        id,
+        'Ya le diste me gusta a esta publicación',
+      );
     }
 
     return { id, cantidadLikes: actualizada.cantidadLikes, likeado: true };
@@ -163,7 +180,10 @@ export class PublicacionesService {
    * DELETE /publicaciones/:id/like: sólo si el usuario antes dio el me gusta
    * (la consigna lo pide explícito). Mismo patrón atómico que darLike.
    */
-  async quitarLike(id: string, usuario: UsuarioAutenticado): Promise<ResultadoLike> {
+  async quitarLike(
+    id: string,
+    usuario: UsuarioAutenticado,
+  ): Promise<ResultadoLike> {
     const actualizada = await this.publicacionModel
       .findOneAndUpdate(
         { _id: id, eliminado: false, likes: usuario.id },
@@ -173,7 +193,10 @@ export class PublicacionesService {
       .exec();
 
     if (!actualizada) {
-      throw await this.errorDeLike(id, 'No habías dado me gusta a esta publicación');
+      throw await this.errorDeLike(
+        id,
+        'No habías dado me gusta a esta publicación',
+      );
     }
 
     return { id, cantidadLikes: actualizada.cantidadLikes, likeado: false };
@@ -186,7 +209,9 @@ export class PublicacionesService {
     id: string,
     usuario: UsuarioAutenticado,
   ): Promise<{ id: string; eliminado: true; fechaEliminacion: Date }> {
-    const publicacion = await this.publicacionModel.findOne({ _id: id, eliminado: false }).exec();
+    const publicacion = await this.publicacionModel
+      .findOne({ _id: id, eliminado: false })
+      .exec();
 
     if (!publicacion) {
       throw new NotFoundException(NO_EXISTE);
@@ -204,7 +229,11 @@ export class PublicacionesService {
     publicacion.fechaEliminacion = new Date();
     await publicacion.save();
 
-    return { id, eliminado: true, fechaEliminacion: publicacion.fechaEliminacion };
+    return {
+      id,
+      eliminado: true,
+      fechaEliminacion: publicacion.fechaEliminacion,
+    };
   }
 
   /**
@@ -212,7 +241,9 @@ export class PublicacionesService {
    * consecutivas podrían repetir o saltear publicaciones.
    */
   private armarOrden(orden: OrdenPublicaciones): Record<string, 1 | -1> {
-    return orden === 'likes' ? { cantidadLikes: -1, createdAt: -1 } : { createdAt: -1 };
+    return orden === 'likes'
+      ? { cantidadLikes: -1, createdAt: -1 }
+      : { createdAt: -1 };
   }
 
   /**
@@ -220,9 +251,17 @@ export class PublicacionesService {
    * no existe (404) o existe pero el like ya estaba/no estaba (409). Una
    * consulta extra nos deja responder el error correcto.
    */
-  private async errorDeLike(id: string, mensajeConflicto: string): Promise<Error> {
-    const existe = await this.publicacionModel.exists({ _id: id, eliminado: false });
+  private async errorDeLike(
+    id: string,
+    mensajeConflicto: string,
+  ): Promise<Error> {
+    const existe = await this.publicacionModel.exists({
+      _id: id,
+      eliminado: false,
+    });
 
-    return existe ? new ConflictException(mensajeConflicto) : new NotFoundException(NO_EXISTE);
+    return existe
+      ? new ConflictException(mensajeConflicto)
+      : new NotFoundException(NO_EXISTE);
   }
 }

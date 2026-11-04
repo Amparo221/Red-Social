@@ -1,4 +1,8 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getModelToken } from '@nestjs/mongoose';
@@ -8,8 +12,10 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Usuario } from '../usuarios/schemas/usuario.schema';
 import { AuthService } from './auth.service';
 
-const AVATAR_POR_DEFECTO = 'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/default.png';
-const IMAGEN_SUBIDA = 'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/nueva.png';
+const AVATAR_POR_DEFECTO =
+  'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/default.png';
+const IMAGEN_SUBIDA =
+  'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/nueva.png';
 const TOKEN = 'token-de-prueba';
 
 const registroValido = {
@@ -32,7 +38,11 @@ const documentoGuardado = (datos: Record<string, unknown>) => ({
 
 describe('AuthService', () => {
   let service: AuthService;
-  let usuarioModel: { exists: jest.Mock; findOne: jest.Mock; create: jest.Mock };
+  let usuarioModel: {
+    exists: jest.Mock;
+    findOne: jest.Mock;
+    create: jest.Mock;
+  };
   let cloudinaryService: { uploadImage: jest.Mock };
   let jwtService: { sign: jest.Mock };
 
@@ -48,7 +58,9 @@ describe('AuthService', () => {
         Promise.resolve(documentoGuardado(datos)),
       ),
     };
-    cloudinaryService = { uploadImage: jest.fn().mockResolvedValue(IMAGEN_SUBIDA) };
+    cloudinaryService = {
+      uploadImage: jest.fn().mockResolvedValue(IMAGEN_SUBIDA),
+    };
     // No firmamos un JWT real: alcanza con comprobar QUÉ datos se firman.
     jwtService = { sign: jest.fn().mockReturnValue(TOKEN) };
 
@@ -78,7 +90,9 @@ describe('AuthService', () => {
 
       const datosGuardados = usuarioModel.create.mock.calls[0][0];
       expect(datosGuardados.password).not.toBe(registroValido.password);
-      expect(await bcrypt.compare(registroValido.password, datosGuardados.password)).toBe(true);
+      expect(
+        await bcrypt.compare(registroValido.password, datosGuardados.password),
+      ).toBe(true);
       expect(datosGuardados.imagenPerfilUrl).toBe(AVATAR_POR_DEFECTO);
       expect(datosGuardados.perfil).toBe('usuario');
       expect(cloudinaryService.uploadImage).not.toHaveBeenCalled();
@@ -105,19 +119,25 @@ describe('AuthService', () => {
       const resultado = await service.registrar(registroValido, archivo);
 
       expect(cloudinaryService.uploadImage).toHaveBeenCalledWith(archivo);
-      expect(usuarioModel.create.mock.calls[0][0].imagenPerfilUrl).toBe(IMAGEN_SUBIDA);
+      expect(usuarioModel.create.mock.calls[0][0].imagenPerfilUrl).toBe(
+        IMAGEN_SUBIDA,
+      );
       expect(resultado.imagenPerfilUrl).toBe(IMAGEN_SUBIDA);
     });
 
     it('rechaza con 409 si el correo ya está registrado', async () => {
       usuarioModel.exists.mockResolvedValueOnce({ _id: 'otro' });
 
-      await expect(service.registrar(registroValido)).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.registrar(registroValido)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
       expect(usuarioModel.create).not.toHaveBeenCalled();
     });
 
     it('rechaza con 409 si el nombre de usuario ya está en uso', async () => {
-      usuarioModel.exists.mockResolvedValueOnce(null).mockResolvedValueOnce({ _id: 'otro' });
+      usuarioModel.exists
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ _id: 'otro' });
 
       await expect(service.registrar(registroValido)).rejects.toThrow(
         'El nombre de usuario ya está en uso',
@@ -127,7 +147,60 @@ describe('AuthService', () => {
     it('traduce el error 11000 (índice unique) en un 409', async () => {
       usuarioModel.create.mockRejectedValue({ code: 11000 });
 
-      await expect(service.registrar(registroValido)).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.registrar(registroValido)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('responde 500 con el detalle si la base de datos falla', async () => {
+      usuarioModel.create.mockRejectedValue(new Error('connection timed out'));
+
+      const error: unknown = await service
+        .registrar(registroValido)
+        .catch((fallo: unknown) => fallo);
+
+      expect(error).toBeInstanceOf(InternalServerErrorException);
+      expect(
+        (error as InternalServerErrorException).getResponse(),
+      ).toMatchObject({
+        statusCode: 500,
+        message: 'No se pudo crear el usuario',
+        detalle: 'connection timed out',
+      });
+    });
+
+    it('responde 500 con el detalle si Cloudinary rechaza la imagen', async () => {
+      cloudinaryService.uploadImage.mockRejectedValue(
+        new Error('Must supply api_key'),
+      );
+
+      const error: unknown = await service
+        .registrar(registroValido, {
+          buffer: Buffer.from('imagen'),
+        } as Express.Multer.File)
+        .catch((fallo: unknown) => fallo);
+
+      expect(error).toBeInstanceOf(InternalServerErrorException);
+      expect(
+        (error as InternalServerErrorException).getResponse(),
+      ).toMatchObject({
+        detalle: 'Must supply api_key',
+      });
+      // Si la imagen no se pudo subir no se guarda nada en la base.
+      expect(usuarioModel.create).not.toHaveBeenCalled();
+    });
+
+    it('propaga el 409 de la verificación de duplicados sin convertirlo en 500', async () => {
+      usuarioModel.exists.mockResolvedValueOnce({ _id: 'ya-existe' });
+
+      const error: unknown = await service
+        .registrar(registroValido)
+        .catch((fallo: unknown) => fallo);
+
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toMatchObject({
+        message: 'El correo ya está registrado',
+      });
     });
   });
 
@@ -137,7 +210,9 @@ describe('AuthService', () => {
     it('devuelve los datos del usuario (sin la contraseña) si todo coincide', async () => {
       const password = await hashValido();
       usuarioModel.findOne.mockReturnValue(
-        darResultadoDeFindOne(documentoGuardado({ ...registroValido, password })),
+        darResultadoDeFindOne(
+          documentoGuardado({ ...registroValido, password }),
+        ),
       );
 
       const resultado = await service.login('anamoreno', 'Segura123');
@@ -153,7 +228,11 @@ describe('AuthService', () => {
       const password = await hashValido();
       usuarioModel.findOne.mockReturnValue(
         darResultadoDeFindOne(
-          documentoGuardado({ ...registroValido, password, perfil: 'administrador' }),
+          documentoGuardado({
+            ...registroValido,
+            password,
+            perfil: 'administrador',
+          }),
         ),
       );
 
@@ -170,20 +249,27 @@ describe('AuthService', () => {
     it('busca por el correo y el nombre de usuario sin distinguir mayúsculas', async () => {
       const password = await hashValido();
       usuarioModel.findOne.mockReturnValue(
-        darResultadoDeFindOne(documentoGuardado({ ...registroValido, password })),
+        darResultadoDeFindOne(
+          documentoGuardado({ ...registroValido, password }),
+        ),
       );
 
       await service.login('ANA@Correo.com', 'Segura123');
 
       expect(usuarioModel.findOne).toHaveBeenCalledWith({
-        $or: [{ correo: 'ana@correo.com' }, { nombreUsuario: 'ana@correo.com' }],
+        $or: [
+          { correo: 'ana@correo.com' },
+          { nombreUsuario: 'ana@correo.com' },
+        ],
       });
     });
 
     it('recorta los espacios sobrantes del identificador', async () => {
       const password = await hashValido();
       usuarioModel.findOne.mockReturnValue(
-        darResultadoDeFindOne(documentoGuardado({ ...registroValido, password })),
+        darResultadoDeFindOne(
+          documentoGuardado({ ...registroValido, password }),
+        ),
       );
 
       // El DTO ya recorta, pero el servicio normaliza igual (defensa en profundidad).
@@ -205,12 +291,14 @@ describe('AuthService', () => {
     it('lanza 401 si la contraseña es incorrecta', async () => {
       const password = await hashValido();
       usuarioModel.findOne.mockReturnValue(
-        darResultadoDeFindOne(documentoGuardado({ ...registroValido, password })),
+        darResultadoDeFindOne(
+          documentoGuardado({ ...registroValido, password }),
+        ),
       );
 
-      await expect(service.login('anamoreno', 'OtraClave1')).rejects.toBeInstanceOf(
-        UnauthorizedException,
-      );
+      await expect(
+        service.login('anamoreno', 'OtraClave1'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
     });
   });
 });

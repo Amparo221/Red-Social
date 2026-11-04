@@ -32,7 +32,12 @@ export class Publicacion {
 
   // Referencia al autor (no se embebe el usuario: si cambia el nombre o la foto
   // de perfil, el feed muestra los datos nuevos sin migrar nada).
-  @Prop({ type: Types.ObjectId, ref: Usuario.name, required: true, index: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: Usuario.name,
+    required: true,
+    index: true,
+  })
   usuario: Types.ObjectId;
 
   // Un elemento por usuario que dio me gusta: el propio array es la garantía

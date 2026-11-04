@@ -1,5 +1,8 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { RequestConUsuario, UsuarioAutenticado } from '../interfaces/jwt-payload.interface';
+import {
+  RequestConUsuario,
+  UsuarioAutenticado,
+} from '../interfaces/jwt-payload.interface';
 
 /**
  * Inyecta en el controller el usuario que resolvió el `JwtAuthGuard`:

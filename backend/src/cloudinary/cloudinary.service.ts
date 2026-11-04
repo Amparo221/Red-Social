@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import toStream = require('buffer-to-stream');
@@ -48,16 +52,24 @@ export class CloudinaryService {
    * Cloudinary espera un stream, no un Buffer: `buffer-to-stream` convierte el
    * archivo que Multer dejó en memoria y lo "pipes" al upload_stream.
    */
-  private subirBuffer(buffer: Buffer, carpeta: string, publicId?: string): Promise<string> {
+  private subirBuffer(
+    buffer: Buffer,
+    carpeta: string,
+    publicId?: string,
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const upload = cloudinary.uploader.upload_stream(
         {
           folder: carpeta,
-          ...(publicId ? { public_id: publicId, overwrite: true, invalidate: true } : {}),
+          ...(publicId
+            ? { public_id: publicId, overwrite: true, invalidate: true }
+            : {}),
         },
         (error, result) => {
           if (error || !result) {
-            return reject(error ?? new Error('Cloudinary no devolvió resultado'));
+            return reject(
+              error ?? new Error('Cloudinary no devolvió resultado'),
+            );
           }
           resolve(result.secure_url);
         },

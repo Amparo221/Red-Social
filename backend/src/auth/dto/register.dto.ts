@@ -40,9 +40,13 @@ export class RegisterDto {
   @Transform(recortarYMinusculas)
   @IsString({ message: 'El nombre de usuario es obligatorio' })
   @IsNotEmpty({ message: 'El nombre de usuario es obligatorio' })
-  @MinLength(3, { message: 'El nombre de usuario debe tener al menos 3 caracteres' })
+  @MinLength(3, {
+    message: 'El nombre de usuario debe tener al menos 3 caracteres',
+  })
   @MaxLength(30)
-  @Matches(/^\S+$/, { message: 'El nombre de usuario no puede contener espacios' })
+  @Matches(/^\S+$/, {
+    message: 'El nombre de usuario no puede contener espacios',
+  })
   nombreUsuario: string;
 
   // Se recorta igual que el resto: un espacio o un tab invisible (copiar y
@@ -55,12 +59,17 @@ export class RegisterDto {
   })
   password: string;
 
-  @IsDateString({}, { message: 'La fecha de nacimiento debe tener el formato AAAA-MM-DD' })
+  @IsDateString(
+    {},
+    { message: 'La fecha de nacimiento debe tener el formato AAAA-MM-DD' },
+  )
   fechaNacimiento: string;
 
   @IsOptional()
   @Transform(recortar)
   @IsString()
-  @MaxLength(200, { message: 'La descripción no puede superar los 200 caracteres' })
+  @MaxLength(200, {
+    message: 'La descripción no puede superar los 200 caracteres',
+  })
   descripcion?: string;
 }

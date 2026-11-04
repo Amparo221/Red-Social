@@ -100,6 +100,21 @@ resolver lo administra la plataforma. La API se publica en `/api/...`: el
 > a desplegar; si además querés conservar las sesiones abiertas en local y en producción, usá el
 > **mismo** secret en los dos lados.
 
+#### Si algo responde 500 en el deploy
+
+Casi siempre es **un fallo de arranque**, no de una ruta: si falta `MONGODB_URI` o `JWT_SECRET`,
+o si el clúster de Atlas no acepta la IP, la app no levanta y **todas** las rutas devuelven 500.
+
+1. **`GET /api/salud`** (público) es el primer chequeo: dice si la API arrancó, si la conexión a
+   Mongo está establecida, cuál es el nombre de la base y **qué variables de entorno llegaron**
+   (sólo `true`/`false`, nunca los valores).
+2. **Runtime Logs** (Deployments → el deployment → *Logs*, o `vercel logs <url>`) muestran el stack
+   completo: `"JWT_SECRET" is not defined`, `MongooseServerSelectionError` (IP no habilitada),
+   `bad auth` (usuario/contraseña), `MongoParseError` (URI con comillas o cortada).
+3. **Atlas → Network Access** tiene que permitir `0.0.0.0/0`: las funciones de Vercel salen por IPs
+   dinámicas. Si sólo está tu IP, en local funciona y en el deploy no.
+4. **Redeploy** después de tocar variables: un deployment ya creado no toma las nuevas.
+
 ---
 
 ## Estructura del proyecto
@@ -135,8 +150,13 @@ backend/
 │   │   ├── cloudinary.module.ts
 │   │   └── cloudinary.service.ts # sube el buffer a Cloudinary (perfiles / publicaciones)
 │   ├── common/
+│   │   ├── filters/all-exceptions.filter.ts  # todo error sale en JSON (con `detalle` y stack en el log)
 │   │   ├── multer/imagen.multer.ts   # límite de 5 MB y formatos permitidos (compartido)
 │   │   └── pipes/parse-object-id.pipe.ts  # :id inválido → 400 (y no un 500 de Mongo)
+│   ├── salud/
+│   │   ├── salud.module.ts
+│   │   ├── salud.controller.ts       # GET /api/salud: ¿arrancó? ¿Mongo conectado? ¿env vars cargadas?
+│   │   └── salud.controller.spec.ts
 │   └── publicaciones/
 │       ├── publicaciones.module.ts
 │       ├── publicaciones.controller.ts   # rutas HTTP del feed
@@ -221,9 +241,11 @@ toPublicacionResponse() ...... arma la respuesta con el autor populado
 |---|---|
 | `dns.setServers(['8.8.8.8', '8.8.4.4'])` | Atlas se resuelve por registros **SRV**; en Windows eso falla con el DNS del sistema (`querySrv ECONNREFUSED`). Forzamos los DNS de Google |
 | `app.enableCors()` | Sin esto el navegador bloquea las llamadas del front (Angular corre en otro puerto/dominio) |
+| `app.useGlobalFilters(new AllExceptionsFilter())` | Cualquier excepción se responde en JSON con un `message` legible; los 5xx agregan `detalle` con la causa y dejan el stack en el log |
 | `new ValidationPipe({ whitelist, transform })` | `whitelist`: descarta campos no declarados en el DTO (no se puede inyectar `perfil: 'administrador'`). `transform`: convierte el body plano en instancia del DTO, necesario para que `@Transform` recorte espacios y pase el correo a minúsculas |
 | `app.listen(process.env.PORT ?? 3000)` | Levanta el servidor HTTP |
 | `void bootstrap()` | El `void` marca la promesa como "ignorada a propósito": evita el error de lint `no-floating-promises` |
+| `bootstrap().catch(...)` | Si el arranque falla (falta una variable, Atlas no responde) la API no atiende **ningún** request: el `catch` loguea qué revisar y corta el proceso con código 1 |
 
 ### 3) `src/app.module.ts` — configuración global
 
@@ -235,6 +257,9 @@ MongooseModule.forRootAsync({
   useFactory: (configService: ConfigService) => ({
     uri: configService.getOrThrow<string>('MONGODB_URI'),
     dbName: configService.get<string>('MONGODB_DB') ?? 'redsocial',
+    serverSelectionTimeoutMS: 5000, // si Atlas no contesta, falla en 5 s con log claro
+    retryAttempts: 2,
+    retryDelay: 1000,
   }),
 }),
 ```
@@ -246,6 +271,9 @@ MongooseModule.forRootAsync({
   Con `forRootAsync` Nest espera a que `ConfigService` esté listo e inyecta la configuración.
 - `getOrThrow()` corta el arranque con un error claro si falta la variable.
 - `dbName`: si la URI no termina en el nombre de la base, Mongoose usaría la base `test`.
+- `serverSelectionTimeoutMS: 5000` + `retryAttempts: 2`: en Vercel la función tiene un tiempo máximo
+  por request; conviene un error a los ~5 s (que queda en los Runtime Logs) antes que un arranque
+  colgado que la plataforma corta sin explicación.
 
 ### 4) `usuarios/` — el esquema de Mongoose
 
@@ -344,6 +372,11 @@ return toUsuarioResponse(usuario);                                     // 5
    cliente mande `perfil: 'administrador'` o `imagenPerfilUrl` y se guarde tal cual.
 5. **Respuesta:** `toUsuarioResponse()` devuelve solo los campos públicos, con `id` en lugar de
    `_id`, sin `__v` y **sin `password`**.
+6. **Try/catch que cubre los cinco pasos** (no sólo `create()`): si falla la conexión a Atlas, una
+   consulta, `bcrypt` o Cloudinary, el cliente recibe **500** con `message: 'No se pudo crear el
+   usuario'` y `detalle` con la causa real, el stack queda en el log y los `409` de duplicados se
+   propagan sin convertirse en 500. Antes, una caída de Cloudinary o de Mongo salía como un 500
+   **sin cuerpo**, y el frontend sólo podía mostrar "ocurrió un error inesperado".
 
 ```ts
 // login
@@ -520,7 +553,7 @@ const [total, documentos] = await Promise.all([
 | Imagen de más de 5 MB | **413** | Multer corta la subida antes de llegar al service |
 | Correo / usuario repetido | **409** | `El correo ya está registrado` / `El nombre de usuario ya está en uso` |
 | Credenciales incorrectas | **401** | `Usuario/correo o contraseña incorrectos` |
-| Falla Cloudinary o la base | **500** | Mensaje genérico; el detalle queda en el log del servidor |
+| Falla Cloudinary o la base | **500** | `message` legible + `detalle` con la causa real (el stack completo queda en el log) |
 | Falta el token o está vencido | **401** | `Falta el token de autenticación` / `El token es inválido o expiró` |
 | Publicación creada | **201** | La publicación con el autor ya populado |
 | Like agregado | **201** | `{ id, cantidadLikes, likeado: true }` |
@@ -539,6 +572,37 @@ const [total, documentos] = await Promise.all([
 > Todas las rutas están montadas bajo **`/api`** (`app.setGlobalPrefix('api')` en `src/main.ts`),
 > porque en Vercel el rewrite `/api/(.*)` del `vercel.json` raíz entrega la request al servicio
 > `backend` **sin recortar el path**. En desarrollo es lo mismo: `http://localhost:3000/api/...`.
+
+### `GET /api/salud`
+
+Diagnóstico del deploy. **No requiere token** (sirve justamente cuando el login no funciona).
+
+```json
+{
+  "ok": true,
+  "mongo": "conectado",
+  "baseDeDatos": "redsocial",
+  "variablesDeEntorno": {
+    "MONGODB_URI": true,
+    "MONGODB_DB": true,
+    "CLOUD_NAME": true,
+    "API_KEY": true,
+    "API_SECRET": true,
+    "DEFAULT_AVATAR_URL": true,
+    "JWT_SECRET": true,
+    "JWT_EXPIRES_IN": true
+  },
+  "plataforma": "vercel",
+  "uptimeEnSegundos": 12,
+  "fecha": "2026-11-04T12:00:00.000Z"
+}
+```
+
+- **200** + `ok: true`: la API arrancó y la base está conectada.
+- **503** + `ok: false` con `mongo: "desconectado"`: la API vive pero perdió la conexión (o el
+  `readyState` todavía es `conectando`).
+- `variablesDeEntorno` informa **existencia**, no valores: un `false` es exactamente la variable que
+  hay que cargar en Vercel y volver a desplegar.
 
 ### `POST /api/auth/registro`
 
@@ -935,6 +999,9 @@ curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authoriz
 | D21 | `limit` con **techo de 50** y default 5 | Evita que un `limit=100000` tumbe el servidor; el default achica el primer render |
 | D22 | El feed calcula **`likeado`** por publicación | El front no tiene que cruzar `likes` con el usuario logueado para pintar el corazón |
 | D23 | `JWT_EXPIRES_IN` en **segundos** | `expiresIn` de `jsonwebtoken` tipa `number | StringValue`; con segundos el valor del `.env` es siempre válido |
+| D24 | **Filtro global** de excepciones (`AllExceptionsFilter`) | Todo error sale en JSON con `message` (y `detalle` en los 5xx): un 500 sin cuerpo deja al front sin nada que mostrar. El stack queda en el log |
+| D25 | `GET /api/salud` **público** con `mongoose.connection.readyState` y variables cargadas (`true`/`false`) | Permite diagnosticar un deploy roto desde el navegador, sin exponer credenciales ni depender de los logs |
+| D26 | `serverSelectionTimeoutMS: 5000` + `retryAttempts: 2` | En serverless conviene fallar rápido y con un log claro antes que agotar el tiempo de la función |
 
 ---
 
@@ -967,4 +1034,5 @@ curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authoriz
 - [x] Tests: unitarios del servicio y del guard + e2e de la capa HTTP (`npm test`, `npm run test:e2e`)
 - [x] Lint (`npm run lint`) y build (`npm run build`) sin errores
 - [x] Chequeo de tipos de todo el proyecto, specs incluidos (`npm run typecheck`)
+- [x] Filtro global de excepciones (`AllExceptionsFilter`) + `GET /api/salud` para diagnosticar el deploy
 - [ ] Comentarios → Sprint #3 (backend)

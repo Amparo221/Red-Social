@@ -16,7 +16,11 @@ import { PublicacionesService } from './../src/publicaciones/publicaciones.servi
 const ID_PUBLICACION = '507f1f77bcf86cd799439011';
 const ID_AUTOR = '507f1f77bcf86cd799439012';
 
-const usuarioDelToken = { id: ID_AUTOR, nombreUsuario: 'anamoreno', perfil: 'usuario' };
+const usuarioDelToken = {
+  id: ID_AUTOR,
+  nombreUsuario: 'anamoreno',
+  perfil: 'usuario',
+};
 
 /**
  * Test de la capa HTTP (routing, ValidationPipe, guard y códigos de estado) sin
@@ -56,14 +60,18 @@ describe('Publicaciones (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [PublicacionesController],
-      providers: [{ provide: PublicacionesService, useValue: publicacionesServiceMock }],
+      providers: [
+        { provide: PublicacionesService, useValue: publicacionesServiceMock },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue(guardMock)
       .compile();
 
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     // Mismo prefijo que src/main.ts y que el rewrite de Vercel.
     app.setGlobalPrefix('api');
     await app.init();
@@ -89,7 +97,10 @@ describe('Publicaciones (e2e)', () => {
     });
 
     it('devuelve 201 y crea la publicación con el usuario del token', async () => {
-      publicacionesServiceMock.crear.mockResolvedValue({ id: ID_PUBLICACION, titulo: 'Colibrí' });
+      publicacionesServiceMock.crear.mockResolvedValue({
+        id: ID_PUBLICACION,
+        titulo: 'Colibrí',
+      });
 
       const respuesta = await request(app.getHttpServer())
         .post('/api/publicaciones')
@@ -216,8 +227,15 @@ describe('Publicaciones (e2e)', () => {
         .set(conToken())
         .expect(201);
 
-      expect(respuesta.body).toEqual({ id: ID_PUBLICACION, cantidadLikes: 1, likeado: true });
-      expect(publicacionesServiceMock.darLike).toHaveBeenCalledWith(ID_PUBLICACION, usuarioDelToken);
+      expect(respuesta.body).toEqual({
+        id: ID_PUBLICACION,
+        cantidadLikes: 1,
+        likeado: true,
+      });
+      expect(publicacionesServiceMock.darLike).toHaveBeenCalledWith(
+        ID_PUBLICACION,
+        usuarioDelToken,
+      );
     });
 
     it('devuelve 400 si el id de la ruta no es un ObjectId', async () => {
@@ -266,7 +284,11 @@ describe('Publicaciones (e2e)', () => {
         .set(conToken())
         .expect(200);
 
-      expect(respuesta.body).toEqual({ id: ID_PUBLICACION, cantidadLikes: 0, likeado: false });
+      expect(respuesta.body).toEqual({
+        id: ID_PUBLICACION,
+        cantidadLikes: 0,
+        likeado: false,
+      });
       expect(publicacionesServiceMock.quitarLike).toHaveBeenCalledWith(
         ID_PUBLICACION,
         usuarioDelToken,

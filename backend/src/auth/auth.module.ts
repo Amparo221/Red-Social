@@ -26,7 +26,10 @@ const VENCIMIENTO_POR_DEFECTO = 15 * 60;
         return {
           secret: configService.getOrThrow<string>('JWT_SECRET'),
           signOptions: {
-            expiresIn: Number.isFinite(segundos) && segundos > 0 ? segundos : VENCIMIENTO_POR_DEFECTO,
+            expiresIn:
+              Number.isFinite(segundos) && segundos > 0
+                ? segundos
+                : VENCIMIENTO_POR_DEFECTO,
           },
         };
       },

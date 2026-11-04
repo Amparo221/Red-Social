@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -12,7 +13,10 @@ import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Usuario, UsuarioDocument } from '../usuarios/schemas/usuario.schema';
-import { toUsuarioResponse, UsuarioResponse } from '../usuarios/utils/usuario-response.util';
+import {
+  toUsuarioResponse,
+  UsuarioResponse,
+} from '../usuarios/utils/usuario-response.util';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 
@@ -36,31 +40,38 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    @InjectModel(Usuario.name) private readonly usuarioModel: Model<UsuarioDocument>,
+    @InjectModel(Usuario.name)
+    private readonly usuarioModel: Model<UsuarioDocument>,
     private readonly cloudinaryService: CloudinaryService,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
   ) {}
 
-  async registrar(registerDto: RegisterDto, file?: Express.Multer.File): Promise<UsuarioConToken> {
+  async registrar(
+    registerDto: RegisterDto,
+    file?: Express.Multer.File,
+  ): Promise<UsuarioConToken> {
     // Separamos la contraseña: el resto son los datos que se guardan tal cual.
     const { password, ...datos } = registerDto;
 
-    // 1) Los índices unique devuelven un error genérico; preguntamos antes para
-    //    poder responder qué campo está en uso.
-    await this.verificarDisponibilidad(datos.correo, datos.nombreUsuario);
-
-    // 2) Nunca guardamos la contraseña en texto plano: bcrypt genera un salt y
-    //    un hash irreversible (con el mismo salt, el hash es el mismo).
-    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-
-    // 3) Imagen opcional: si el usuario no subió una, usamos la de perfil
-    //    por defecto (subida una sola vez a Cloudinary).
-    const imagenPerfilUrl = file
-      ? await this.cloudinaryService.uploadImage(file)
-      : (this.configService.get<string>('DEFAULT_AVATAR_URL') ?? '');
-
+    // Todo el flujo va dentro del try: si falla la base, Cloudinary o bcrypt,
+    // el cliente recibe un JSON con `message` y `detalle` (en vez de un 500 sin
+    // cuerpo) y el stack completo queda en el log del servidor.
     try {
+      // 1) Los índices unique devuelven un error genérico; preguntamos antes para
+      //    poder responder qué campo está en uso.
+      await this.verificarDisponibilidad(datos.correo, datos.nombreUsuario);
+
+      // 2) Nunca guardamos la contraseña en texto plano: bcrypt genera un salt y
+      //    un hash irreversible (con el mismo salt, el hash es el mismo).
+      const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+      // 3) Imagen opcional: si el usuario no subió una, usamos la de perfil
+      //    por defecto (subida una sola vez a Cloudinary).
+      const imagenPerfilUrl = file
+        ? await this.cloudinaryService.uploadImage(file)
+        : (this.configService.get<string>('DEFAULT_AVATAR_URL') ?? '');
+
       // 4) Copiamos campo por campo (no `...registerDto`): así el cliente no
       //    puede inyectar `perfil: 'administrador'` ni pisar otros campos.
       const usuario = await this.usuarioModel.create({
@@ -79,21 +90,40 @@ export class AuthService {
       //    registrarse el usuario ya queda logueado.
       return this.conToken(toUsuarioResponse(usuario));
     } catch (error) {
+      // Los 409 de disponibilidad y el 500 de Cloudinary ya son HttpException:
+      // salen tal cual, con su status y su mensaje.
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       // Si dos registros simultáneos pasan el chequeo anterior, el índice unique
       // de Mongo frena al segundo con el código 11000.
       if (this.esClaveDuplicada(error)) {
         throw new ConflictException('El correo o nombre de usuario ya existe');
       }
 
+      // Cualquier otra cosa es una falla de infraestructura: Mongo inaccesible,
+      // credenciales vencidas, una variable de entorno que falta…
+      const detalle = error instanceof Error ? error.message : String(error);
+
       this.logger.error(
         'No se pudo crear el usuario',
-        error instanceof Error ? error.stack : String(error),
+        error instanceof Error ? error.stack : detalle,
       );
-      throw new InternalServerErrorException('No se pudo crear el usuario');
+
+      throw new InternalServerErrorException({
+        statusCode: 500,
+        message: 'No se pudo crear el usuario',
+        error: 'Internal Server Error',
+        detalle,
+      });
     }
   }
 
-  async login(identificador: string, passwordPlano: string): Promise<UsuarioConToken> {
+  async login(
+    identificador: string,
+    passwordPlano: string,
+  ): Promise<UsuarioConToken> {
     // `identificador` puede ser el correo o el nombre de usuario. Los dos se
     // guardan en minúsculas, así que normalizamos también lo que llega por el
     // body: el login no distingue mayúsculas ni espacios sobrantes.
@@ -138,7 +168,10 @@ export class AuthService {
     return { ...usuario, token: this.jwtService.sign(payload) };
   }
 
-  private async verificarDisponibilidad(correo: string, nombreUsuario: string): Promise<void> {
+  private async verificarDisponibilidad(
+    correo: string,
+    nombreUsuario: string,
+  ): Promise<void> {
     const correoEnUso = await this.usuarioModel.exists({ correo });
     if (correoEnUso) {
       throw new ConflictException('El correo ya está registrado');

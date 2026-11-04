@@ -55,7 +55,9 @@ export function toPublicacionResponse(
   // `.populated('usuario')` devuelve los _id originales sólo si el campo está
   // populado; así sabemos si mapear un objeto o dejar el id suelto.
   const estaPopulado = Boolean(publicacion.populated('usuario'));
-  const autor = estaPopulado ? (publicacion.usuario as unknown as UsuarioPopulado) : null;
+  const autor = estaPopulado
+    ? (publicacion.usuario as unknown as UsuarioPopulado)
+    : null;
 
   return {
     id: String(publicacion._id),

@@ -32,7 +32,9 @@ describe('Auth (e2e)', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     // Mismo prefijo que en src/main.ts: la API se publica bajo /api (en Vercel el
     // rewrite de /api/(.*) entrega la request sin recortar el path).
     app.setGlobalPrefix('api');
@@ -49,7 +51,10 @@ describe('Auth (e2e)', () => {
 
   describe('POST /api/auth/registro', () => {
     it('devuelve 201 cuando los datos son válidos', async () => {
-      authServiceMock.registrar.mockResolvedValue({ id: '1', nombreUsuario: 'anamoreno' });
+      authServiceMock.registrar.mockResolvedValue({
+        id: '1',
+        nombreUsuario: 'anamoreno',
+      });
 
       const respuesta = await request(app.getHttpServer())
         .post('/api/auth/registro')
@@ -63,7 +68,11 @@ describe('Auth (e2e)', () => {
     it('devuelve 400 si el correo es inválido o la contraseña es débil', async () => {
       await request(app.getHttpServer())
         .post('/api/auth/registro')
-        .send({ ...registroValido, correo: 'no-es-un-correo', password: 'debil' })
+        .send({
+          ...registroValido,
+          correo: 'no-es-un-correo',
+          password: 'debil',
+        })
         .expect(400);
 
       expect(authServiceMock.registrar).not.toHaveBeenCalled();
@@ -74,7 +83,11 @@ describe('Auth (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/api/auth/registro')
-        .send({ ...registroValido, correo: '  ANA@Correo.COM ', nombre: '  Ana  ' })
+        .send({
+          ...registroValido,
+          correo: '  ANA@Correo.COM ',
+          nombre: '  Ana  ',
+        })
         .expect(201);
 
       expect(authServiceMock.registrar).toHaveBeenCalledWith(
@@ -88,12 +101,19 @@ describe('Auth (e2e)', () => {
 
       await request(app.getHttpServer())
         .post('/api/auth/registro')
-        .send({ ...registroValido, nombreUsuario: '  AnaMoreno  ', password: '  Segura123  ' })
+        .send({
+          ...registroValido,
+          nombreUsuario: '  AnaMoreno  ',
+          password: '  Segura123  ',
+        })
         .expect(201);
 
       // Un tab o un espacio invisible (copiar y pegar) no tiene que llegar al hash.
       expect(authServiceMock.registrar).toHaveBeenCalledWith(
-        expect.objectContaining({ nombreUsuario: 'anamoreno', password: 'Segura123' }),
+        expect.objectContaining({
+          nombreUsuario: 'anamoreno',
+          password: 'Segura123',
+        }),
         undefined,
       );
     });
@@ -101,14 +121,20 @@ describe('Auth (e2e)', () => {
 
   describe('POST /api/auth/login', () => {
     it('devuelve 200 (no 201) con credenciales válidas', async () => {
-      authServiceMock.login.mockResolvedValue({ id: '1', nombreUsuario: 'anamoreno' });
+      authServiceMock.login.mockResolvedValue({
+        id: '1',
+        nombreUsuario: 'anamoreno',
+      });
 
       await request(app.getHttpServer())
         .post('/api/auth/login')
         .send({ identificador: 'anamoreno', password: 'Segura123' })
         .expect(200);
 
-      expect(authServiceMock.login).toHaveBeenCalledWith('anamoreno', 'Segura123');
+      expect(authServiceMock.login).toHaveBeenCalledWith(
+        'anamoreno',
+        'Segura123',
+      );
     });
 
     it('devuelve 400 si falta la contraseña', async () => {
@@ -130,7 +156,10 @@ describe('Auth (e2e)', () => {
 
       // Sin este recorte, el login devolvería 401 comparando " Segura123" contra
       // el hash de "Segura123" (bug real: el tab invisible viaja en el portapapeles).
-      expect(authServiceMock.login).toHaveBeenCalledWith('anamoreno', 'Segura123');
+      expect(authServiceMock.login).toHaveBeenCalledWith(
+        'anamoreno',
+        'Segura123',
+      );
     });
   });
 });

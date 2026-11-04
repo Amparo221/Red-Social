@@ -116,6 +116,7 @@ Errores que el frontend traduce (`src/app/core/utils/error-http.util.ts`):
 | `404`  | El mensaje del backend (`La publicación no existe`)                                              |
 | `409`  | El mensaje del backend: `El correo ya está registrado`, `El nombre de usuario ya está en uso`, `Ya le diste me gusta a esta publicación` |
 | `413`  | `La imagen no puede superar los 5 MB.`                                                           |
+| `500`  | El mensaje del backend (`No se pudo crear el usuario`, `No se pudo subir la imagen`). Si el filtro global agregó `detalle`, esa causa real se ve en DevTools → **Network** → la request → **Response** |
 | `0`    | `No pudimos conectarnos con el servidor…` (backend apagado)                                      |
 
 ### Detalles del contrato que el frontend respeta

@@ -5,7 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { JwtPayload, RequestConUsuario } from '../interfaces/jwt-payload.interface';
+import {
+  JwtPayload,
+  RequestConUsuario,
+} from '../interfaces/jwt-payload.interface';
 
 /**
  * Guard de sesión: exige el header `Authorization: Bearer <token>` y valida el

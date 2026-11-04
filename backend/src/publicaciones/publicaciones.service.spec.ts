@@ -15,9 +15,12 @@ import { Publicacion } from './schemas/publicacion.schema';
 const ID_PUBLICACION = '507f1f77bcf86cd799439011';
 const ID_AUTOR = '507f1f77bcf86cd799439012';
 const ID_OTRO = '507f1f77bcf86cd799439013';
-const IMAGEN = 'https://res.cloudinary.com/demo/image/upload/red-social/publicaciones/ave.jpg';
+const IMAGEN =
+  'https://res.cloudinary.com/demo/image/upload/red-social/publicaciones/ave.jpg';
 
-const usuarioAutenticado = (extra: Partial<UsuarioAutenticado> = {}): UsuarioAutenticado => ({
+const usuarioAutenticado = (
+  extra: Partial<UsuarioAutenticado> = {},
+): UsuarioAutenticado => ({
   id: ID_AUTOR,
   nombreUsuario: 'anamoreno',
   perfil: 'usuario',
@@ -29,7 +32,8 @@ const autorPopulado = {
   nombre: 'Ana',
   apellido: 'Moreno',
   nombreUsuario: 'anamoreno',
-  imagenPerfilUrl: 'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/ana.png',
+  imagenPerfilUrl:
+    'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/ana.png',
 };
 
 // Documento que "devuelve" Mongo, sin tocar la base real.
@@ -50,7 +54,9 @@ const documento = (extra: Record<string, unknown> = {}, populado = true) => ({
   fechaEliminacion: null as Date | null,
   createdAt: new Date('2026-10-01T10:00:00.000Z'),
   updatedAt: new Date('2026-10-01T10:00:00.000Z'),
-  populated: jest.fn().mockReturnValue(populado ? new Types.ObjectId(ID_AUTOR) : undefined),
+  populated: jest
+    .fn()
+    .mockReturnValue(populado ? new Types.ObjectId(ID_AUTOR) : undefined),
   populate: jest.fn().mockResolvedValue(undefined),
   save: jest.fn().mockResolvedValue(undefined),
   ...extra,
@@ -104,7 +110,10 @@ describe('PublicacionesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PublicacionesService,
-        { provide: getModelToken(Publicacion.name), useValue: publicacionModel },
+        {
+          provide: getModelToken(Publicacion.name),
+          useValue: publicacionModel,
+        },
         { provide: CloudinaryService, useValue: cloudinaryService },
       ],
     }).compile();
@@ -197,12 +206,19 @@ describe('PublicacionesService', () => {
 
       // La baja es lógica: el filtro por eliminado no puede faltar nunca.
       expect(publicacionModel.find).toHaveBeenCalledWith({ eliminado: false });
-      expect(publicacionModel.countDocuments).toHaveBeenCalledWith({ eliminado: false });
+      expect(publicacionModel.countDocuments).toHaveBeenCalledWith({
+        eliminado: false,
+      });
       expect(cadena.sort).toHaveBeenCalledWith({ createdAt: -1 });
       expect(cadena.skip).toHaveBeenCalledWith(5);
       expect(cadena.limit).toHaveBeenCalledWith(5);
 
-      expect(resultado).toMatchObject({ total: 10, offset: 5, limit: 5, orden: 'fecha' });
+      expect(resultado).toMatchObject({
+        total: 10,
+        offset: 5,
+        limit: 5,
+        orden: 'fecha',
+      });
       expect(resultado.publicaciones).toHaveLength(1);
     });
 
@@ -210,13 +226,22 @@ describe('PublicacionesService', () => {
       const cadena = cadenaFind([documento()]);
       publicacionModel.find.mockReturnValue(cadena);
 
-      await servicio.listar({ ...queryPorDefecto, orden: 'likes' }, usuarioAutenticado());
+      await servicio.listar(
+        { ...queryPorDefecto, orden: 'likes' },
+        usuarioAutenticado(),
+      );
 
-      expect(cadena.sort).toHaveBeenCalledWith({ cantidadLikes: -1, createdAt: -1 });
+      expect(cadena.sort).toHaveBeenCalledWith({
+        cantidadLikes: -1,
+        createdAt: -1,
+      });
     });
 
     it('filtra las publicaciones de un usuario puntual', async () => {
-      await servicio.listar({ ...queryPorDefecto, usuario: ID_OTRO }, usuarioAutenticado());
+      await servicio.listar(
+        { ...queryPorDefecto, usuario: ID_OTRO },
+        usuarioAutenticado(),
+      );
 
       const filtro = publicacionModel.find.mock.calls[0][0];
       expect(filtro.eliminado).toBe(false);
@@ -226,12 +251,18 @@ describe('PublicacionesService', () => {
     it('marca likeado sólo en las publicaciones que el usuario ya likeó', async () => {
       publicacionModel.find.mockReturnValue(
         cadenaFind([
-          documento({ likes: [new Types.ObjectId(ID_AUTOR)], cantidadLikes: 1 }),
+          documento({
+            likes: [new Types.ObjectId(ID_AUTOR)],
+            cantidadLikes: 1,
+          }),
           documento({ _id: new Types.ObjectId(ID_OTRO) }),
         ]),
       );
 
-      const resultado = await servicio.listar(queryPorDefecto, usuarioAutenticado());
+      const resultado = await servicio.listar(
+        queryPorDefecto,
+        usuarioAutenticado(),
+      );
 
       expect(resultado.publicaciones[0].likeado).toBe(true);
       expect(resultado.publicaciones[1].likeado).toBe(false);
@@ -239,9 +270,14 @@ describe('PublicacionesService', () => {
 
     it('indica si quedan más páginas', async () => {
       publicacionModel.countDocuments.mockResolvedValue(5);
-      publicacionModel.find.mockReturnValue(cadenaFind([documento(), documento()]));
+      publicacionModel.find.mockReturnValue(
+        cadenaFind([documento(), documento()]),
+      );
 
-      const primera = await servicio.listar(queryPorDefecto, usuarioAutenticado());
+      const primera = await servicio.listar(
+        queryPorDefecto,
+        usuarioAutenticado(),
+      );
       expect(primera.hayMas).toBe(true);
 
       publicacionModel.find.mockReturnValue(cadenaFind([documento()]));
@@ -259,9 +295,13 @@ describe('PublicacionesService', () => {
         exec: jest.fn().mockResolvedValue(documento({ cantidadLikes: 3 })),
       });
 
-      const resultado = await servicio.darLike(ID_PUBLICACION, usuarioAutenticado());
+      const resultado = await servicio.darLike(
+        ID_PUBLICACION,
+        usuarioAutenticado(),
+      );
 
-      const [filtro, actualizacion, opciones] = publicacionModel.findOneAndUpdate.mock.calls[0];
+      const [filtro, actualizacion, opciones] =
+        publicacionModel.findOneAndUpdate.mock.calls[0];
       // El filtro es la garantía del "un me gusta por usuario": si ya está en
       // likes, la consulta no matchea y no se actualiza nada.
       expect(filtro).toEqual({
@@ -275,25 +315,33 @@ describe('PublicacionesService', () => {
       });
       expect(opciones).toEqual({ new: true });
 
-      expect(resultado).toEqual({ id: ID_PUBLICACION, cantidadLikes: 3, likeado: true });
+      expect(resultado).toEqual({
+        id: ID_PUBLICACION,
+        cantidadLikes: 3,
+        likeado: true,
+      });
     });
 
     it('devuelve 409 si el usuario ya había dado me gusta', async () => {
-      publicacionModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      publicacionModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
       publicacionModel.exists.mockResolvedValue({ _id: ID_PUBLICACION });
 
-      await expect(servicio.darLike(ID_PUBLICACION, usuarioAutenticado())).rejects.toBeInstanceOf(
-        ConflictException,
-      );
+      await expect(
+        servicio.darLike(ID_PUBLICACION, usuarioAutenticado()),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
 
     it('devuelve 404 si la publicación no existe o fue eliminada', async () => {
-      publicacionModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      publicacionModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
       publicacionModel.exists.mockResolvedValue(null);
 
-      await expect(servicio.darLike(ID_PUBLICACION, usuarioAutenticado())).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        servicio.darLike(ID_PUBLICACION, usuarioAutenticado()),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
@@ -303,9 +351,13 @@ describe('PublicacionesService', () => {
         exec: jest.fn().mockResolvedValue(documento({ cantidadLikes: 0 })),
       });
 
-      const resultado = await servicio.quitarLike(ID_PUBLICACION, usuarioAutenticado());
+      const resultado = await servicio.quitarLike(
+        ID_PUBLICACION,
+        usuarioAutenticado(),
+      );
 
-      const [filtro, actualizacion] = publicacionModel.findOneAndUpdate.mock.calls[0];
+      const [filtro, actualizacion] =
+        publicacionModel.findOneAndUpdate.mock.calls[0];
       // Sólo matchea si el like estaba: la consigna pide sacarlo sólo si antes
       // lo había dado.
       expect(filtro).toEqual({
@@ -318,11 +370,17 @@ describe('PublicacionesService', () => {
         $inc: { cantidadLikes: -1 },
       });
 
-      expect(resultado).toEqual({ id: ID_PUBLICACION, cantidadLikes: 0, likeado: false });
+      expect(resultado).toEqual({
+        id: ID_PUBLICACION,
+        cantidadLikes: 0,
+        likeado: false,
+      });
     });
 
     it('devuelve 409 si el usuario no había dado me gusta', async () => {
-      publicacionModel.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      publicacionModel.findOneAndUpdate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
       publicacionModel.exists.mockResolvedValue({ _id: ID_PUBLICACION });
 
       await expect(
@@ -346,7 +404,10 @@ describe('PublicacionesService', () => {
     it('hace una baja lógica si el que la pide es el autor', async () => {
       const publicacion = darPublicacion();
 
-      const resultado = await servicio.eliminar(ID_PUBLICACION, usuarioAutenticado());
+      const resultado = await servicio.eliminar(
+        ID_PUBLICACION,
+        usuarioAutenticado(),
+      );
 
       expect(publicacionModel.findOne).toHaveBeenCalledWith({
         _id: ID_PUBLICACION,
@@ -364,7 +425,10 @@ describe('PublicacionesService', () => {
     it('permite la baja a un administrador aunque no sea el autor', async () => {
       const publicacion = darPublicacion();
 
-      await servicio.eliminar(ID_PUBLICACION, usuarioAutenticado({ perfil: 'administrador' }));
+      await servicio.eliminar(
+        ID_PUBLICACION,
+        usuarioAutenticado({ perfil: 'administrador' }),
+      );
 
       expect(publicacion.save).toHaveBeenCalled();
     });
@@ -381,7 +445,9 @@ describe('PublicacionesService', () => {
     });
 
     it('devuelve 404 si la publicación no existe o ya fue eliminada', async () => {
-      publicacionModel.findOne.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
+      publicacionModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
 
       await expect(
         servicio.eliminar(ID_PUBLICACION, usuarioAutenticado()),

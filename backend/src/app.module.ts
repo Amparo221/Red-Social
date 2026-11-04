@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
 import { PublicacionesModule } from './publicaciones/publicaciones.module';
+import { SaludModule } from './salud/salud.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 
 @Module({
@@ -18,12 +19,19 @@ import { UsuariosModule } from './usuarios/usuarios.module';
         uri: configService.getOrThrow<string>('MONGODB_URI'),
         // Si la URI no incluye el nombre de la base, Mongoose usaría "test".
         dbName: configService.get<string>('MONGODB_DB') ?? 'redsocial',
+        // Si Atlas no contesta (IP no habilitada, credenciales inválidas), que
+        // falle en ~5 s con un error claro en el log en vez de dejar el arranque
+        // colgado hasta el timeout de la plataforma.
+        serverSelectionTimeoutMS: 5000,
+        retryAttempts: 2,
+        retryDelay: 1000,
       }),
     }),
 
     AuthModule,
     UsuariosModule,
     PublicacionesModule,
+    SaludModule,
   ],
 })
 export class AppModule {}
