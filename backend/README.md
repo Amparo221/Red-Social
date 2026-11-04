@@ -116,6 +116,10 @@ Por eso `vercel.json` → `services.backend.buildCommand` ejecuta, **después** 
 empaqueta como `node_modules/...` en la raíz de la función. El script sólo actúa en Vercel
 (`if (!process.env.VERCEL)`), así que en local (`cd backend && npm install && npm test`) no cambia nada.
 
+> **Otro síntoma distinto:** si el log dice `ERR_REQUIRE_ESM` (`require() of ES Module … /@nestjs/common/index.js`),
+> el empaquetado está bien pero volvió a entrar **NestJS 12** (que publica sólo ESM) en un proyecto que compila a
+> CommonJS. Ver D29: la salida del proyecto es CommonJS, así que las dependencias de Nest tienen que ser la 11.
+
 Para verificarlo sin desplegar: `vercel build --prod` y revisar
 `.vercel/output/services/backend/functions/index.func/.vc-config.json` — el `handler` es `main.js` y
 **todas** las rutas de dependencias del `filePathMap` tienen que empezar con `node_modules/`
