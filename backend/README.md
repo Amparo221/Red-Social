@@ -27,7 +27,7 @@ Este repositorio implementa los **Sprints #1 y #2 del backend**:
 
 | Tecnología | Para qué se usa en el proyecto |
 |---|---|
-| **NestJS 12** | Framework del servidor. Arquitectura modular: `controller` (HTTP) → `service` (lógica) → `module` (ensamblado) |
+| **NestJS 11** | Framework del servidor. Arquitectura modular: `controller` (HTTP) → `service` (lógica) → `module` (ensamblado). Se usa la 11 y no la 12 porque la 12 es **ESM-only** y el proyecto compila a CommonJS |
 | **TypeScript** | Tipado estático, compilado a **CommonJS** (ver `tsconfig.json`) |
 | **MongoDB Atlas + Mongoose** | Base de datos en la nube y ODM (esquemas, modelos, `populate`) |
 | **Cloudinary** | Almacenamiento de las imágenes de perfil (con CDN) |
@@ -1025,6 +1025,7 @@ curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authoriz
 | D26 | `serverSelectionTimeoutMS: 5000` + `retryAttempts: 2` | En serverless conviene fallar rápido y con un log claro antes que agotar el tiempo de la función |
 | D27 | **`bcryptjs`** en vez de `bcrypt` | `bcrypt` es un módulo **nativo**: en Vercel npm no ejecuta los *install scripts* por defecto, así que nunca se compilaba y el arranque moría con `Could not locate the bindings file`. `bcryptjs` es JS puro (sin *build*, sin ABI) y compatible con los hashes `$2b$` ya guardados |
 | D28 | `node scripts/hoist-node-modules.js` en el `buildCommand` de Vercel | El builder aplana `dist/` en la raíz de la función pero deja las dependencias en `backend/node_modules`: mover `node_modules` a la raíz del monorepo hace que el handler aplanado las encuentre (ver *FUNCTION_INVOCATION_FAILED*) |
+| D29 | **NestJS 11** (no 12) | La 12 publica **sólo ESM** (`"type": "module"`): con salida CommonJS anda en local (`require(esm)` de Node ≥ 22) pero el launcher de Vercel la rechaza con `ERR_REQUIRE_ESM`. La 11 sigue siendo CommonJS y respeta lo que pide el enunciado |
 
 ---
 

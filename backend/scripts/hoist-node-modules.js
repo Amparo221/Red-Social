@@ -29,13 +29,24 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const origen = path.resolve(__dirname, '..', 'node_modules');
-const destino = path.resolve(__dirname, '..', '..', 'node_modules');
+const backend = path.resolve(__dirname, '..');
+const origen = path.join(backend, 'node_modules');
+const destino = path.resolve(backend, '..', 'node_modules');
+const compilado = path.join(backend, 'dist', 'main.js');
 
 const main = () => {
   if (!process.env.VERCEL) {
     console.log('[hoist] Fuera de Vercel: no se mueve node_modules.');
     return;
+  }
+
+  // Si `nest build` no dejó `dist/main.js`, Vercel empaquetaría la app con su
+  // propio bundler y la función no arrancaría: mejor romper el build acá.
+  if (!fs.existsSync(compilado)) {
+    console.error(
+      `[hoist] Falta ${compilado}: el build de NestJS no generó dist/main.js.`,
+    );
+    process.exit(1);
   }
 
   if (!fs.existsSync(origen)) {
