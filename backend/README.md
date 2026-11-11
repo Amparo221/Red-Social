@@ -174,7 +174,6 @@ función (hoy son `node_modules/...`, en la raíz de la función) y tiene que ex
 Prueba final, sin desplegar: `node .vercel/output/services/backend/functions/index.func/backend/src/main.cjs`
 con `MONGODB_URI` y `JWT_SECRET` dummy — si tira `Cannot find module '@nestjs/...'`, el bundle está mal.
 
-
 #### Si **todo** responde `404 NOT_FOUND` (incluida la raíz `/`)
 
 Es un deployment **sin rutas**: se publicó un `.vercel/output` vacío o incompleto. No es CORS, ni
