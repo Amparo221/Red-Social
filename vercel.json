@@ -4,7 +4,7 @@
     "backend": {
       "root": "backend/",
       "framework": "nestjs",
-      "buildCommand": "npm run build && node scripts/hoist-node-modules.js"
+      "buildCommand": "npm run build"
     },
     "frontend": {
       "root": "frontend/",
