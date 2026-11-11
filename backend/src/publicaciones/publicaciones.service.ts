@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { UsuarioAutenticado } from '../auth/interfaces/jwt-payload.interface';
+import type { UsuarioAutenticado } from '../auth/interfaces/jwt-payload.interface';
 import {
   CARPETA_PUBLICACIONES,
   CloudinaryService,

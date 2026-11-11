@@ -3,7 +3,8 @@
   "services": {
     "backend": {
       "root": "backend/",
-      "framework": "nestjs"
+      "framework": "nestjs",
+      "buildCommand": "npm run build && node scripts/hoist-node-modules.js"
     },
     "frontend": {
       "root": "frontend/",

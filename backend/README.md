@@ -6,7 +6,7 @@ Este repositorio implementa los **Sprints #1 y #2 del backend**:
 
 - **Sprint #1 — Usuarios**
   - **Registro de usuarios** (`POST /api/auth/registro`): validación de los datos, foto de perfil
-    opcional subida a Cloudinary y contraseña encriptada con bcrypt.
+    opcional subida a Cloudinary y contraseña encriptada con bcryptjs.
   - **Login** (`POST /api/auth/login`) usando el correo **o** el nombre de usuario.
 - **Sprint #2 — Publicaciones**
   - **Alta de publicación** (`POST /api/publicaciones`) con imagen opcional (Cloudinary) y datos del
@@ -27,11 +27,11 @@ Este repositorio implementa los **Sprints #1 y #2 del backend**:
 
 | Tecnología | Para qué se usa en el proyecto |
 |---|---|
-| **NestJS 12** | Framework del servidor. Arquitectura modular: `controller` (HTTP) → `service` (lógica) → `module` (ensamblado) |
+| **NestJS 11** | Framework del servidor. Arquitectura modular: `controller` (HTTP) → `service` (lógica) → `module` (ensamblado). Se usa la 11 y no la 12 porque la 12 es **ESM-only** y el proyecto compila a CommonJS |
 | **TypeScript** | Tipado estático, compilado a **CommonJS** (ver `tsconfig.json`) |
 | **MongoDB Atlas + Mongoose** | Base de datos en la nube y ODM (esquemas, modelos, `populate`) |
 | **Cloudinary** | Almacenamiento de las imágenes de perfil (con CDN) |
-| **bcrypt** | Hash de contraseñas con salt |
+| **bcryptjs** | Hash de contraseñas con salt (JS puro: no necesita compilar módulos nativos en el deploy) |
 | **@nestjs/jwt** | Firma y verificación del token de sesión (`JwtModule` + `JwtService`) |
 | **class-validator + class-transformer** | Validación y normalización de los datos que llegan |
 | **Multer** (`@nestjs/platform-express`) | Recepción del archivo en `multipart/form-data` (en memoria) |
@@ -100,6 +100,31 @@ resolver lo administra la plataforma. La API se publica en `/api/...`: el
 > el deploy falla al arrancar (y el login devolvería 500). Cargalo en *Environment Variables* y volvé
 > a desplegar; si además querés conservar las sesiones abiertas en local y en producción, usá el
 > **mismo** secret en los dos lados.
+
+#### Si el deploy devuelve `FUNCTION_INVOCATION_FAILED` en **todas** las rutas
+
+Ese error no es una ruta rota: la función **no llega a cargar**. En los *Runtime Logs* aparece
+`Cannot find module '@nestjs/common'` con el stack arrancando en `/var/task/main.js`.
+
+El builder del servicio `backend` compila con `nest build` y **aplana** `backend/dist` en la raíz de
+la función (`/var/task/main.js`, `/var/task/app.module.js`, …), pero las dependencias que rastrea
+`@vercel/nft` conservan la ruta relativa a la raíz del repo (`/var/task/backend/node_modules/...`).
+Con `node_modules` dentro de `backend/`, Node buscaba en `/var/task/node_modules` (que no existía) y
+fallaba el primer `require`.
+
+Por eso `vercel.json` → `services.backend.buildCommand` ejecuta, **después** de compilar,
+`node scripts/hoist-node-modules.js`: mueve `node_modules` a la raíz del monorepo y así nft lo
+empaqueta como `node_modules/...` en la raíz de la función. El script sólo actúa en Vercel
+(`if (!process.env.VERCEL)`), así que en local (`cd backend && npm install && npm test`) no cambia nada.
+
+> **Otro síntoma distinto:** si el log dice `ERR_REQUIRE_ESM` (`require() of ES Module … /@nestjs/common/index.js`),
+> el empaquetado está bien pero volvió a entrar **NestJS 12** (que publica sólo ESM) en un proyecto que compila a
+> CommonJS. Ver D29: la salida del proyecto es CommonJS, así que las dependencias de Nest tienen que ser la 11.
+
+Para verificarlo sin desplegar: `vercel build --prod` y revisar
+`.vercel/output/services/backend/functions/index.func/.vc-config.json` — el `handler` es `main.js` y
+**todas** las rutas de dependencias del `filePathMap` tienen que empezar con `node_modules/`
+(si aparece `backend/node_modules/...`, el hoisting no corrió).
 
 #### Si algo responde 500 en el deploy
 
@@ -1166,6 +1191,9 @@ borrar, `eliminado` pasa a `true` con `fechaEliminacion` (el documento no se bor
 | D24 | **Filtro global** de excepciones (`AllExceptionsFilter`) | Todo error sale en JSON con `message` (y `detalle` en los 5xx): un 500 sin cuerpo deja al front sin nada que mostrar. El stack queda en el log |
 | D25 | `GET /api/salud` **público** con `mongoose.connection.readyState` y variables cargadas (`true`/`false`) | Permite diagnosticar un deploy roto desde el navegador, sin exponer credenciales ni depender de los logs |
 | D26 | `serverSelectionTimeoutMS: 5000` + `retryAttempts: 2` | En serverless conviene fallar rápido y con un log claro antes que agotar el tiempo de la función |
+| D27 | **`bcryptjs`** en vez de `bcrypt` | `bcrypt` es un módulo **nativo**: en Vercel npm no ejecuta los *install scripts* por defecto, así que nunca se compilaba y el arranque moría con `Could not locate the bindings file`. `bcryptjs` es JS puro (sin *build*, sin ABI) y compatible con los hashes `$2b$` ya guardados |
+| D28 | `node scripts/hoist-node-modules.js` en el `buildCommand` de Vercel | El builder aplana `dist/` en la raíz de la función pero deja las dependencias en `backend/node_modules`: mover `node_modules` a la raíz del monorepo hace que el handler aplanado las encuentre (ver *FUNCTION_INVOCATION_FAILED*) |
+| D29 | **NestJS 11** (no 12) | La 12 publica **sólo ESM** (`"type": "module"`): con salida CommonJS anda en local (`require(esm)` de Node ≥ 22) pero el launcher de Vercel la rechaza con `ERR_REQUIRE_ESM`. La 11 sigue siendo CommonJS y respeta lo que pide el enunciado |
 | D27 | El detalle reutiliza `toPublicacionResponse` (`GET /publicaciones/:id`) | El contrato del detalle es **idéntico** al del feed: el front reusa el modelo y los helpers de autor/fecha |
 | D28 | `Comentario` en su **propio módulo** (`ComentarioModule`), no dentro de `PublicacionesModule` | Cada recurso mantiene su esquema, DTO, servicio y controller; el módulo registra el modelo `Publicacion` sólo para validar que exista |
 | D29 | `DELETE /comentarios/:id` en un controller aparte (`ComentariosController`) | Nest usa una ruta base por clase; separarlo deja el borrado simétrico con el `POST` y sin rutas anidadas raras |

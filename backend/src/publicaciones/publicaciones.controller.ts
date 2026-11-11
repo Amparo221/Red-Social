@@ -13,7 +13,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsuarioActual } from '../auth/decorators/usuario-actual.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UsuarioAutenticado } from '../auth/interfaces/jwt-payload.interface';
+import type { UsuarioAutenticado } from '../auth/interfaces/jwt-payload.interface';
 import { OPCIONES_IMAGEN } from '../common/multer/imagen.multer';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { CreatePublicacionDto } from './dto/create-publicacion.dto';
