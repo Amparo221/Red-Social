@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../services/auth.service';
+import { esCuentaDeshabilitada } from '../utils/error-http.util';
 
 /** Rutas públicas de auth: no llevan token (ni deben cerrar la sesión con un 401). */
 const RUTAS_SIN_TOKEN = ['/auth/login', '/auth/registro', '/auth/sesion'];
@@ -11,8 +12,10 @@ const RUTAS_SIN_TOKEN = ['/auth/login', '/auth/registro', '/auth/sesion'];
 /**
  * Interceptor funcional (Angular 17+):
  *  1. pega `Authorization: Bearer <token>` en cada request al backend;
- *  2. si una ruta protegida responde 401 (token vencido: dura 15 minutos), cierra
- *     la sesión y manda al login con el aviso de sesión expirada.
+ *  2. si una ruta protegida responde 401, cierra la sesión y manda al login con
+ *     el aviso correcto: "sesión expirada" si venció el token (dura 15
+ *     minutos) o "cuenta deshabilitada" si un administrador dio de baja la
+ *     cuenta (Sprint 4, el backend lo distingue con el campo `motivo`).
  *
  * El token se lee del AuthService (no de localStorage) para que el estado y lo
  * persistido no se puedan desincronizar.
@@ -32,8 +35,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       // Varias requests del feed pueden volver 401 a la vez: sólo la primera
       // navega (después de cerrarSesion estaLogueado() ya es false).
       if (esRutaProtegida && auth.estaLogueado() && error instanceof HttpErrorResponse && error.status === 401) {
+        const motivo = esCuentaDeshabilitada(error) ? 'deshabilitada' : 'expirada';
         auth.cerrarSesion();
-        void router.navigate(['/login'], { queryParams: { sesion: 'expirada' } });
+        void router.navigate(['/login'], { queryParams: { sesion: motivo } });
       }
       return throwError(() => error);
     }),

@@ -10,6 +10,12 @@
     </div>
   }
 
+  @if (accesoDenegado) {
+    <div class="alerta alerta--error" role="alert">
+      Esa sección es sólo para administradores. Seguí navegando el feed.
+    </div>
+  }
+
   @if (aviso(); as mensaje) {
     <div class="alerta alerta--ok" role="status" aria-live="polite">
       <p>{{ mensaje }}</p>

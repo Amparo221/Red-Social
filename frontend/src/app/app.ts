@@ -1,10 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { catchError, finalize, forkJoin, of, timer } from 'rxjs';
 import { environment } from '../environments/environment';
 import { ModalSesion } from './compartidos/modal-sesion/modal-sesion';
 import { AuthService } from './core/services/auth.service';
-import { urlAvatar } from './core/models/usuario.model';
+import { esAdministrador, urlAvatar } from './core/models/usuario.model';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +26,9 @@ export class App {
 
   // El avatar puede venir vacío si el backend no encontró la imagen subida.
   protected readonly avatar = (): string => urlAvatar(this.auth.usuarioActual());
+
+  /** Sólo los administradores ven el acceso al dashboard de usuarios. */
+  protected readonly esAdmin = computed(() => esAdministrador(this.auth.usuarioActual()));
 
   constructor() {
     if (!this.cargandoInicial()) {

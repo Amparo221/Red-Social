@@ -1,5 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { mensajeDeError, mensajesDeError } from './error-http.util';
+import {
+  CUENTA_DESHABILITADA,
+  MOTIVO_CUENTA_DESHABILITADA,
+  SESION_EXPIRADA,
+  avisoDeSesion,
+  esCuentaDeshabilitada,
+  mensajeDeError,
+  mensajesDeError,
+  motivoDeError,
+} from './error-http.util';
 
 describe('mensajesDeError', () => {
   it('avisa cuando el backend no está corriendo (status 0)', () => {
@@ -68,5 +77,55 @@ describe('mensajesDeError', () => {
 
   it('cae en el mensaje genérico con un error que no es HTTP', () => {
     expect(mensajeDeError(new Error('boom'))).toContain('error inesperado');
+  });
+});
+
+describe('cuenta deshabilitada (Sprint 4)', () => {
+  const errorDeshabilitada = new HttpErrorResponse({
+    status: 401,
+    error: {
+      statusCode: 401,
+      message: 'Tu cuenta está deshabilitada. Contactá a un administrador.',
+      error: 'Unauthorized',
+      motivo: MOTIVO_CUENTA_DESHABILITADA,
+    },
+  });
+
+  it('lee el motivo que agrega el backend', () => {
+    expect(motivoDeError(errorDeshabilitada)).toBe(MOTIVO_CUENTA_DESHABILITADA);
+    expect(esCuentaDeshabilitada(errorDeshabilitada)).toBe(true);
+  });
+
+  it('devuelve null cuando el error no trae motivo', () => {
+    const expirado = new HttpErrorResponse({
+      status: 401,
+      error: { statusCode: 401, message: 'El token es inválido o expiró' },
+    });
+
+    expect(motivoDeError(expirado)).toBeNull();
+    expect(esCuentaDeshabilitada(expirado)).toBe(false);
+    expect(motivoDeError(new Error('boom'))).toBeNull();
+  });
+
+  it('el aviso de cuenta deshabilitada gana sobre el de sesión expirada', () => {
+    // Aunque la request haya ido a una ruta protegida, el usuario tiene que
+    // leer que lo deshabilitaron, no que "venció la sesión".
+    expect(mensajeDeError(errorDeshabilitada, 'sesion')).toBe(CUENTA_DESHABILITADA);
+    expect(mensajeDeError(errorDeshabilitada)).toBe(CUENTA_DESHABILITADA);
+  });
+});
+
+describe('avisoDeSesion', () => {
+  it('explica que la sesión expiró con ?sesion=expirada', () => {
+    expect(avisoDeSesion('expirada')).toEqual([SESION_EXPIRADA]);
+  });
+
+  it('explica que la cuenta está deshabilitada con ?sesion=deshabilitada', () => {
+    expect(avisoDeSesion('deshabilitada')).toEqual([CUENTA_DESHABILITADA]);
+  });
+
+  it('no muestra nada si no hay motivo', () => {
+    expect(avisoDeSesion(null)).toEqual([]);
+    expect(avisoDeSesion('otra-cosa')).toEqual([]);
   });
 });

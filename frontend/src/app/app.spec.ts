@@ -169,4 +169,37 @@ describe('App', () => {
       .expectOne(`${environment.apiUrl}/auth/sesion`)
       .flush({ expiracionSegundos: 300, avisoSegundos: 20 });
   });
+
+  it('sólo muestra el acceso a Usuarios si el perfil es administrador', async () => {
+    localStorage.setItem(
+      CLAVE_SESION,
+      JSON.stringify({ ...SESION_GUARDADA, perfil: 'administrador' }),
+    );
+
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    const compilado = fixture.nativeElement as HTMLElement;
+    const destinos = Array.from(compilado.querySelectorAll('a')).map((enlace) =>
+      enlace.getAttribute('href'),
+    );
+
+    expect(compilado.textContent).toContain('Usuarios');
+    expect(destinos).toContain('/dashboard/usuarios');
+  });
+
+  it('un usuario común no ve el acceso a Usuarios', async () => {
+    localStorage.setItem(CLAVE_SESION, JSON.stringify(SESION_GUARDADA));
+
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+
+    const compilado = fixture.nativeElement as HTMLElement;
+    const destinos = Array.from(compilado.querySelectorAll('a')).map((enlace) =>
+      enlace.getAttribute('href'),
+    );
+
+    expect(compilado.textContent).not.toContain('Usuarios');
+    expect(destinos).not.toContain('/dashboard/usuarios');
+  });
 });

@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from './core/guards/admin.guard';
 import { sesionGuard } from './core/guards/sesion.guard';
 
 export const routes: Routes = [
@@ -32,6 +33,22 @@ export const routes: Routes = [
     title: 'IdentiBird · Mi perfil',
     canActivate: [sesionGuard],
     loadComponent: () => import('./pages/inicio/inicio').then((m) => m.Inicio),
+  },
+  // Dashboard del administrador (Sprint 4). El padre aplica los dos guards a
+  // todas las hijas: sesión iniciada y perfil 'administrador'. Un usuario común
+  // que entre a mano vuelve al feed con `?denegado=1`.
+  {
+    path: 'dashboard',
+    canActivate: [sesionGuard, adminGuard],
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'usuarios' },
+      {
+        path: 'usuarios',
+        title: 'IdentiBird · Usuarios',
+        loadComponent: () =>
+          import('./pages/dashboard/usuarios/usuarios').then((m) => m.Usuarios),
+      },
+    ],
   },
   { path: '**', redirectTo: 'publicaciones' },
 ];

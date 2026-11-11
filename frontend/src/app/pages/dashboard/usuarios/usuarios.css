@@ -1,0 +1,144 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.dashboard__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.dashboard__bajada {
+  margin: 0;
+  color: var(--texto-suave);
+}
+
+.dashboard__estado,
+.dashboard__vacio {
+  color: var(--texto-suave);
+}
+
+.dashboard__vacio {
+  text-align: center;
+}
+
+/* Filtros: búsqueda ancha + estado + perfil + botones. */
+.filtros {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 1rem;
+  align-items: end;
+  padding: 1.25rem 1.5rem;
+}
+
+.filtros__acciones {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* La tarjeta no lleva padding: la tabla ocupa todo el ancho y scrollea sola. */
+.tabla-envoltorio {
+  padding: 0;
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.tabla__leyenda {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  border-bottom: 1px solid var(--cielo-200);
+}
+
+.tabla th,
+.tabla td {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--cielo-200);
+}
+
+.tabla thead th {
+  background: var(--cielo-50);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--texto-suave);
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.usuario__datos {
+  display: flex;
+  flex-direction: column;
+}
+
+.usuario__meta {
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+
+.estado {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.estado--ok {
+  color: var(--ok);
+  background: var(--ok-fondo);
+}
+
+.estado--baja {
+  color: var(--error);
+  background: var(--error-fondo);
+}
+
+.acciones {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.acciones__nota {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--texto-suave);
+}
+
+.paginador {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.paginador__posicion {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+@media (max-width: 780px) {
+  .filtros {
+    grid-template-columns: 1fr;
+  }
+}

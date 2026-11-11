@@ -3,6 +3,8 @@
  * backend/src/usuarios/utils/usuario-response.util.ts).
  */
 
+export type PerfilUsuario = 'usuario' | 'administrador';
+
 /** Usuario público: el backend nunca devuelve el hash del password. */
 export interface Usuario {
   id: string;
@@ -14,6 +16,14 @@ export interface Usuario {
   descripcion: string;
   imagenPerfilUrl: string;
   perfil: string;
+  /**
+   * Baja lógica (Sprint 4). `false` = deshabilitado. Es opcional porque las
+   * sesiones guardadas antes de este sprint (y los documentos viejos de Atlas)
+   * no traen el campo: en ese caso la cuenta cuenta como habilitada.
+   */
+  activo?: boolean;
+  /** Fecha de la baja; `null` (o ausente) mientras la cuenta está habilitada. */
+  fechaBaja?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -42,6 +52,43 @@ export interface NuevoUsuario {
   password: string;
   fechaNacimiento: string;
   descripcion?: string;
+  /**
+   * Sólo lo usa el alta del dashboard (POST /usuarios). El registro público no
+   * manda este campo: el backend fuerza 'usuario' pase lo que pase.
+   */
+  perfil?: PerfilUsuario;
+}
+
+/** Estados que acepta el filtro del listado del dashboard. */
+export type EstadoUsuario = 'activos' | 'deshabilitados';
+
+/** Cantidad de usuarios por página en el dashboard (igual que el backend). */
+export const USUARIOS_POR_PAGINA = 10;
+
+/** Respuesta de GET /usuarios (sólo administradores). */
+export interface ListadoUsuarios {
+  total: number;
+  offset: number;
+  limit: number;
+  hayMas: boolean;
+  usuarios: Usuario[];
+}
+
+/** Parámetros de GET /usuarios. */
+export interface FiltrosUsuarios {
+  offset?: number;
+  limit?: number;
+  /** Busca en nombre, apellido, correo y nombre de usuario. */
+  busqueda?: string;
+  estado?: EstadoUsuario;
+  perfil?: PerfilUsuario;
+}
+
+/** Respuesta de DELETE /usuarios/:id y PATCH /usuarios/:id/estado. */
+export interface EstadoCambiado {
+  id: string;
+  activo: boolean;
+  fechaBaja: string | null;
 }
 
 /** Cuerpo de error estándar de NestJS. */
@@ -49,6 +96,9 @@ export interface ErrorNest {
   statusCode: number;
   message: string | string[];
   error?: string;
+  /** Código corto de los guards (por ejemplo `CUENTA_DESHABILITADA`). */
+  motivo?: string;
+  detalle?: string;
 }
 
 /**
@@ -90,3 +140,13 @@ export function urlAvatar(usuario: Pick<Usuario, 'imagenPerfilUrl'> | null | und
 export function esAdministrador(usuario: Pick<Usuario, 'perfil'> | null | undefined): boolean {
   return usuario?.perfil === 'administrador';
 }
+
+/**
+ * Una cuenta está habilitada salvo que el backend diga `activo: false`.
+ * El `!== false` (en vez de `=== true`) contempla los usuarios creados antes
+ * del Sprint 4, que no tienen el campo guardado.
+ */
+export function estaHabilitado(usuario: Pick<Usuario, 'activo'> | null | undefined): boolean {
+  return usuario?.activo !== false;
+}
+

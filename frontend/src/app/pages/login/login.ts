@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { SESION_EXPIRADA, mensajesDeError } from '../../core/utils/error-http.util';
+import { avisoDeSesion, mensajesDeError } from '../../core/utils/error-http.util';
 
 @Component({
   selector: 'app-login',
@@ -19,11 +19,12 @@ export class Login {
   protected readonly enviando = signal(false);
 
   /**
-   * `?sesion=expirada` lo pone el authInterceptor cuando el JWT venció (dura 15
-   * minutos): la alerta arranca visible para que se entienda por qué se salió.
+   * `?sesion=expirada|deshabilitada` lo pone el `authInterceptor` cuando cierra
+   * la sesión: la alerta arranca visible para que se entienda por qué se salió
+   * (token vencido o cuenta dada de baja por un administrador).
    */
   protected readonly errores = signal<string[]>(
-    this.ruta.snapshot.queryParamMap.get('sesion') === 'expirada' ? [SESION_EXPIRADA] : [],
+    avisoDeSesion(this.ruta.snapshot.queryParamMap.get('sesion')),
   );
 
   protected readonly formulario = this.fb.nonNullable.group({

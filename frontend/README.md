@@ -47,6 +47,7 @@ Otros comandos:
 | `/login`         | Ingresar       | Correo **o** nombre de usuario + contraseña.                            |
 | `/registro`      | Crear cuenta   | Formulario completo, con foto de perfil opcional y vista previa.        |
 | `/inicio`        | Mi perfil      | Datos del usuario logueado y sus publicaciones con los comentarios en sólo lectura. Protegida por `sesionGuard`. |
+| `/dashboard/usuarios` | Usuarios (administración) | Tabla de usuarios con búsqueda y filtros, alta desde el panel y baja/alta lógica. Protegida por `sesionGuard` + `adminGuard`. |
 | `''` y `**`      | → `/publicaciones` | El guard manda a `/login` si no hay sesión, así que entrar sin cuenta termina siempre en el login. |
 
 Después del login y del registro se entra siempre a `/publicaciones`; el registro
@@ -187,21 +188,23 @@ src/
 ├─ styles.css                     paleta celeste + verde + clases base (tarjeta, campo, botón…)
 ├─ environments/                  apiUrl por entorno (fileReplacements en angular.json)
 └─ app/
-   ├─ app.ts / app.html / app.css shell: header con logo, nav (Publicaciones / Mi perfil / Salir) y footer
+   ├─ app.ts / app.html / app.css shell: header con logo, nav (Publicaciones / Mi perfil / Usuarios / Salir) y footer
    ├─ app.config.ts               provideRouter + provideHttpClient(withFetch(), withInterceptors([authInterceptor]))
-   ├─ app.routes.ts               publicaciones (inicial), login, registro, inicio (lazy) + guard
+   ├─ app.routes.ts               publicaciones (inicial), login, registro, inicio y dashboard (lazy) + guards
    ├─ core/
-   │  ├─ models/usuario.model.ts  tipos del contrato, Sesion (usuario + token), avatar y perfil
+   │  ├─ models/usuario.model.ts  tipos del contrato, Sesion (usuario + token), avatar, perfil y listado de usuarios
    │  ├─ models/publicacion.model.ts tipos del feed + helpers (autorDe, nombreAutor, esAutor) y de comentarios (paginado, editado, permisos)
    │  ├─ services/auth.service.ts registrar(), login(), cerrarSesion(), validarSesion(), refrescar(), politicaSesion()
    │  ├─ services/publicaciones.service.ts listar(), crear(), obtenerUno(), like/unlike, eliminar() + comentarios (listar paginado, crear, editar, eliminar)
+   │  ├─ services/usuarios.service.ts listar(), crear() (multipart), deshabilitar(), cambiarEstado() (sólo administradores)
    │  ├─ services/sesion-timer.service.ts reloj de la sesión (exp del JWT): aviso, extender, expirar
-   │  ├─ interceptors/auth.interceptor.ts Bearer del JWT + 401 → logout
+   │  ├─ interceptors/auth.interceptor.ts Bearer del JWT + 401 → logout (sesión expirada o cuenta deshabilitada)
    │  ├─ utils/error-http.util.ts traducción de errores HTTP a mensajes
    │  ├─ utils/fecha.util.ts      "hace 5 min" para las tarjetas
    │  ├─ utils/jwt.util.ts        payload del JWT: vencimiento y segundos restantes
    │  ├─ utils/imagen.util.ts     validación de la foto (tipo y 5 MB) compartida
-   │  └─ guards/sesion.guard.ts   protege /publicaciones y /inicio
+   │  ├─ guards/sesion.guard.ts   protege /publicaciones y /inicio
+   │  └─ guards/admin.guard.ts    protege /dashboard (perfil administrador)
    ├─ compartidos/modal-sesion/   aviso de sesión por vencer (cuenta regresiva, extender, cerrar)
    └─ pages/
       ├─ publicaciones/          feed: estado, filtros y paginación (+ spec)
@@ -211,7 +214,9 @@ src/
       ├─ publicacion/            detalle: publicación completa, me gusta y borrar (+ spec)
       ├─ login/       formulario de ingreso
       ├─ registro/    formulario de alta + subida de foto
-      └─ inicio/      perfil: datos del usuario y sus publicaciones con comentarios (sólo lectura) (+ spec)
+      ├─ inicio/      perfil: datos del usuario y sus publicaciones con comentarios (sólo lectura) (+ spec)
+      └─ dashboard/usuarios/     administración: tabla, filtros y baja lógica (+ spec)
+         └─ formulario-usuario/  alta desde el panel (perfil a elección) (+ spec)
 ```
 
 ## Validaciones del compositor de publicaciones
@@ -296,6 +301,40 @@ suelto (si el autor se borró de la base), así que los helpers
 `puedeEditarComentario` / `estaEditado` resuelven el nombre, los permisos y el
 badge sin romper la vista.
 
+### Dashboard de usuarios (`/dashboard/usuarios`, Sprint 4)
+
+Sólo para `perfil: 'administrador'`. `adminGuard` deja pasar al admin y, si un usuario
+común escribe la URL a mano, lo devuelve a `/publicaciones?denegado=1` (y el feed
+explica el motivo). La seguridad real la hace el backend: `RolesGuard` responde
+**403** en `/api/usuarios` aunque alguien saltee el guard del router.
+
+| Pieza | Archivo | Qué hace |
+| ----- | ------- | -------- |
+| Pantalla | `pages/dashboard/usuarios/usuarios.ts` | Dueña del estado: listado paginado (10), búsqueda, filtros por estado y perfil, avisos y cambios de estado en curso |
+| Alta | `pages/dashboard/usuarios/formulario-usuario/` | Mismos campos que el registro (+ `perfil`), con las mismas validaciones en el navegador y foto opcional |
+| Servicio | `core/services/usuarios.service.ts` | `listar()`, `crear()` (multipart), `deshabilitar()` (`DELETE`) y `cambiarEstado()` (`PATCH`) |
+| Guard | `core/guards/admin.guard.ts` | Exige sesión y `esAdministrador(usuario)` |
+
+Decisiones:
+
+- **Baja lógica**: "Deshabilitar" llama a `DELETE /usuarios/:id`; la cuenta no puede
+  ingresar pero sus publicaciones y comentarios siguen visibles. "Habilitar" usa
+  `PATCH /usuarios/:id/estado` con `{ activo: true }`.
+- La tabla se actualiza **en el lugar** con la respuesta del backend (sin recargar);
+  si hay un filtro por estado activo se vuelve a pedir la página para que el usuario
+  no quede "colado".
+- El propio administrador ve **Tu cuenta** en lugar del botón: el backend igual
+  responde **403** si intenta deshabilitarse.
+- La columna **Baja** usa `fechaRelativa()` (`hace 2 d`, o la fecha corta si pasó más
+  de una semana).
+- Los errores usan `mensajesDeError(error, 'sesion')`: un **401** cierra la sesión y
+  un **403/409** muestra el mensaje del backend tal cual.
+- El header sólo muestra el link **Usuarios** cuando `esAdministrador(usuario)`.
+
+Si el backend responde un 401 con `motivo: 'CUENTA_DESHABILITADA'`, el
+`authInterceptor` cierra la sesión y navega a `/login?sesion=deshabilitada`; el login
+arranca con ese aviso (`avisoDeSesion()`), distinto del de `?sesion=expirada`.
+
 ### Perfil (`/inicio`)
 
 - La sección **"Mis publicaciones"** ya no es una tarjeta: sin borde, sombra ni
@@ -349,6 +388,17 @@ badge sin romper la vista.
       validada y un F5 con token por vencer muestra el splash **sin** el modal
       encima (`app.spec`: «no muestra el aviso de sesión por encima del splash
       al arrancar»).
+- [x] **Dashboard de usuarios** (`/dashboard/usuarios`) sólo para administradores:
+      `adminGuard` y link **Usuarios** en el header (`app.spec`).
+- [x] Tabla con búsqueda, filtros por estado y perfil, y paginación de 10.
+- [x] Alta desde el panel: mismo formulario del registro más `perfil`
+      (`usuario` o `administrador`), con foto opcional.
+- [x] Baja/alta lógica con `DELETE /usuarios/:id` y `PATCH /usuarios/:id/estado`,
+      sin que el administrador pueda deshabilitarse a sí mismo.
+- [x] `?sesion=deshabilitada` en el login cuando el backend responde 401 con
+      `motivo: 'CUENTA_DESHABILITADA'` (`authInterceptor` + `avisoDeSesion`).
+- [x] Tests nuevos: `usuarios.service`, `admin.guard`, la pantalla del dashboard,
+      `formulario-usuario`, el interceptor y `error-http.util`.
 
 ## Validaciones del formulario de registro
 

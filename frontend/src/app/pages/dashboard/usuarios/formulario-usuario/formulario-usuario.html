@@ -1,0 +1,182 @@
+<section class="alta tarjeta">
+  <h2>Nuevo usuario</h2>
+  <p class="alta__bajada">
+    Se crea la cuenta con la contraseña que escribas acá. El usuario podrá ingresar de inmediato.
+  </p>
+
+  @if (errores().length > 0) {
+    <div class="alerta alerta--error" role="alert" aria-live="polite">
+      @if (errores().length === 1) {
+        <p>{{ errores()[0] }}</p>
+      } @else {
+        <ul>
+          @for (mensaje of errores(); track $index) {
+            <li>{{ mensaje }}</li>
+          }
+        </ul>
+      }
+    </div>
+  }
+
+  <form [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+    <div class="fila">
+      <div class="campo">
+        <label class="campo__label" for="nuevo-nombre">Nombre</label>
+        <input
+          id="nuevo-nombre"
+          class="campo__control"
+          type="text"
+          formControlName="nombre"
+          autocomplete="given-name"
+          placeholder="Nombre"
+          [attr.aria-invalid]="mensaje('nombre') !== null"
+        />
+        @if (mensaje('nombre'); as texto) {
+          <span class="campo__error">{{ texto }}</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label class="campo__label" for="nuevo-apellido">Apellido</label>
+        <input
+          id="nuevo-apellido"
+          class="campo__control"
+          type="text"
+          formControlName="apellido"
+          autocomplete="family-name"
+          placeholder="Apellido"
+          [attr.aria-invalid]="mensaje('apellido') !== null"
+        />
+        @if (mensaje('apellido'); as texto) {
+          <span class="campo__error">{{ texto }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="campo">
+      <label class="campo__label" for="nuevo-correo">Correo</label>
+      <input
+        id="nuevo-correo"
+        class="campo__control"
+        type="email"
+        formControlName="correo"
+        autocomplete="email"
+        placeholder="correo@ejemplo.com"
+        [attr.aria-invalid]="mensaje('correo') !== null"
+      />
+      @if (mensaje('correo'); as texto) {
+        <span class="campo__error">{{ texto }}</span>
+      }
+    </div>
+
+    <div class="campo">
+      <label class="campo__label" for="nuevo-nombre-usuario">Nombre de usuario</label>
+      <input
+        id="nuevo-nombre-usuario"
+        class="campo__control"
+        type="text"
+        formControlName="nombreUsuario"
+        autocomplete="off"
+        placeholder="usuario"
+        [attr.aria-invalid]="mensaje('nombreUsuario') !== null"
+      />
+      <span class="campo__ayuda">3 a 30 caracteres, sin espacios. Se guarda en minúsculas.</span>
+      @if (mensaje('nombreUsuario'); as texto) {
+        <span class="campo__error">{{ texto }}</span>
+      }
+    </div>
+
+    <div class="campo">
+      <label class="campo__label" for="nuevo-password">Contraseña</label>
+      <input
+        id="nuevo-password"
+        class="campo__control"
+        type="password"
+        formControlName="password"
+        autocomplete="new-password"
+        placeholder="Mínimo 8 caracteres"
+        [attr.aria-invalid]="mensaje('password') !== null"
+      />
+      <span class="campo__ayuda">Al menos 8 caracteres, con una mayúscula y un número.</span>
+      @if (mensaje('password'); as texto) {
+        <span class="campo__error">{{ texto }}</span>
+      }
+    </div>
+
+    <div class="fila">
+      <div class="campo">
+        <label class="campo__label" for="nuevo-fecha">Fecha de nacimiento</label>
+        <input
+          id="nuevo-fecha"
+          class="campo__control"
+          type="date"
+          formControlName="fechaNacimiento"
+          autocomplete="bday"
+          [attr.aria-invalid]="mensaje('fechaNacimiento') !== null"
+        />
+        @if (mensaje('fechaNacimiento'); as texto) {
+          <span class="campo__error">{{ texto }}</span>
+        }
+      </div>
+
+      <div class="campo">
+        <label class="campo__label" for="nuevo-perfil">Perfil</label>
+        <select id="nuevo-perfil" class="campo__control" formControlName="perfil">
+          <option value="usuario">Usuario</option>
+          <option value="administrador">Administrador</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="campo">
+      <label class="campo__label" for="nuevo-descripcion">Descripción (opcional)</label>
+      <textarea
+        id="nuevo-descripcion"
+        class="campo__control"
+        rows="3"
+        formControlName="descripcion"
+        placeholder="Una breve presentación"
+        [attr.aria-invalid]="mensaje('descripcion') !== null"
+      ></textarea>
+      @if (mensaje('descripcion'); as texto) {
+        <span class="campo__error">{{ texto }}</span>
+      }
+    </div>
+
+    <div class="campo">
+      <label class="campo__label" for="nuevo-imagen">Foto de perfil (opcional)</label>
+      <input
+        id="nuevo-imagen"
+        #imagenInput
+        class="campo__control"
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        (change)="alElegirArchivo($event)"
+      />
+      <span class="campo__ayuda">JPG, PNG, WEBP o GIF, hasta 5 MB. Sin foto se usa el avatar por defecto.</span>
+      @if (errorImagen(); as texto) {
+        <span class="campo__error">{{ texto }}</span>
+      }
+      @if (vistaPrevia(); as url) {
+        <div class="alta__previa">
+          <img class="avatar" [src]="url" alt="Vista previa de la foto elegida" />
+          <span>{{ nombreArchivo() }}</span>
+          <button
+            class="boton boton--secundario boton--chico"
+            type="button"
+            (click)="quitarImagen(imagenInput)"
+          >
+            Quitar
+          </button>
+        </div>
+      }
+    </div>
+
+    <div class="alta__acciones">
+      <button class="boton boton--primario" type="submit" [disabled]="enviando()">
+        {{ enviando() ? 'Creando…' : 'Crear usuario' }}
+      </button>
+      <button class="boton boton--secundario" type="button" (click)="cancelarAlta()">Cancelar</button>
+    </div>
+  </form>
+</section>

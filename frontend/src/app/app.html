@@ -39,6 +39,15 @@
         <a class="boton boton--secundario boton--chico" routerLink="/inicio" routerLinkActive="activo">
           Mi perfil
         </a>
+        @if (esAdmin()) {
+          <a
+            class="boton boton--secundario boton--chico"
+            routerLink="/dashboard/usuarios"
+            routerLinkActive="activo"
+          >
+            Usuarios
+          </a>
+        }
         <button class="boton boton--primario boton--chico" type="button" (click)="salir()">Salir</button>
       } @else {
         <a class="boton boton--secundario boton--chico" routerLink="/login" routerLinkActive="activo">

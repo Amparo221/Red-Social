@@ -1,0 +1,177 @@
+<section class="dashboard">
+  <header class="dashboard__encabezado">
+    <div>
+      <h1>Usuarios</h1>
+      <p class="dashboard__bajada">
+        Desde acá se crean cuentas y se dan de baja (baja lógica: no se borran sus publicaciones).
+      </p>
+    </div>
+    <button class="boton boton--primario boton--chico" type="button" (click)="alternarFormulario()">
+      {{ mostrarFormulario() ? 'Cerrar formulario' : 'Nuevo usuario' }}
+    </button>
+  </header>
+
+  @if (aviso(); as mensaje) {
+    <div class="alerta alerta--ok" role="status" aria-live="polite">
+      <p>{{ mensaje }}</p>
+    </div>
+  }
+
+  @if (errores().length > 0) {
+    <div class="alerta alerta--error" role="alert" aria-live="polite">
+      @if (errores().length === 1) {
+        <p>{{ errores()[0] }}</p>
+      } @else {
+        <ul>
+          @for (mensaje of errores(); track $index) {
+            <li>{{ mensaje }}</li>
+          }
+        </ul>
+      }
+      <button class="boton boton--secundario boton--chico" type="button" (click)="cargar()">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  @if (mostrarFormulario()) {
+    <app-formulario-usuario (creada)="alCrear($event)" (cancelar)="alternarFormulario()" />
+  }
+
+  <form class="tarjeta filtros" (submit)="$event.preventDefault(); buscar()" role="search">
+    <div class="campo filtros__busqueda">
+      <label class="campo__label" for="busqueda">Buscar</label>
+      <input
+        id="busqueda"
+        class="campo__control"
+        type="search"
+        placeholder="Nombre, apellido, correo o usuario"
+        [value]="busqueda()"
+        (input)="alEscribirBusqueda($event)"
+      />
+    </div>
+
+    <div class="campo">
+      <label class="campo__label" for="estado">Estado</label>
+      <select id="estado" class="campo__control" [value]="estado()" (change)="alCambiarEstado($event)">
+        <option value="">Todos</option>
+        <option value="activos">Habilitados</option>
+        <option value="deshabilitados">Deshabilitados</option>
+      </select>
+    </div>
+
+    <div class="campo">
+      <label class="campo__label" for="perfil">Perfil</label>
+      <select id="perfil" class="campo__control" [value]="perfil()" (change)="alCambiarPerfil($event)">
+        <option value="">Todos</option>
+        <option value="usuario">Usuario</option>
+        <option value="administrador">Administrador</option>
+      </select>
+    </div>
+
+    <div class="filtros__acciones">
+      <button class="boton boton--primario boton--chico" type="submit">Buscar</button>
+      @if (hayFiltros()) {
+        <button class="boton boton--secundario boton--chico" type="button" (click)="limpiarFiltros()">
+          Limpiar
+        </button>
+      }
+    </div>
+  </form>
+
+  @if (cargando()) {
+    <p class="dashboard__estado" role="status">Cargando usuarios…</p>
+  } @else if (vacio()) {
+    <div class="tarjeta dashboard__vacio">
+      @if (hayFiltros()) {
+        <p>No hay usuarios que coincidan con la búsqueda.</p>
+      } @else {
+        <p>Todavía no hay usuarios cargados.</p>
+      }
+    </div>
+  } @else {
+    <div class="tarjeta tabla-envoltorio">
+      <table class="tabla">
+        <caption class="tabla__leyenda">
+          Mostrando {{ desde() }}–{{ hasta() }} de {{ total() }} {{ total() === 1 ? 'usuario' : 'usuarios' }}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Usuario</th>
+            <th scope="col">Perfil</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Baja</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (usuario of usuarios(); track usuario.id) {
+            <tr>
+              <td>
+                <div class="usuario">
+                  <img class="avatar avatar--chico" [src]="avatar(usuario)" alt="" />
+                  <div class="usuario__datos">
+                    <strong>{{ usuario.nombre }} {{ usuario.apellido }}</strong>
+                    <span class="usuario__meta">&#64;{{ usuario.nombreUsuario }} · {{ usuario.correo }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>{{ usuario.perfil === 'administrador' ? 'Administrador' : 'Usuario' }}</td>
+              <td>
+                @if (habilitado(usuario)) {
+                  <span class="estado estado--ok">Habilitada</span>
+                } @else {
+                  <span class="estado estado--baja">Deshabilitada</span>
+                }
+              </td>
+              <td>{{ fechaBaja(usuario) }}</td>
+              <td class="acciones">
+                @if (!habilitado(usuario)) {
+                  <button
+                    class="boton boton--secundario boton--chico"
+                    type="button"
+                    [disabled]="estaOcupado(usuario)"
+                    (click)="alternarEstado(usuario)"
+                  >
+                    Habilitar
+                  </button>
+                } @else if (puedeDeshabilitar(usuario)) {
+                  <button
+                    class="boton boton--peligro boton--chico"
+                    type="button"
+                    [disabled]="estaOcupado(usuario)"
+                    (click)="alternarEstado(usuario)"
+                  >
+                    Deshabilitar
+                  </button>
+                } @else {
+                  <span class="acciones__nota">Tu cuenta</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <nav class="paginador" aria-label="Paginación de usuarios">
+      <button
+        class="boton boton--secundario boton--chico"
+        type="button"
+        [disabled]="offset() === 0 || cargando()"
+        (click)="paginaAnterior()"
+      >
+        Anterior
+      </button>
+      <span class="paginador__posicion">Página {{ offset() / limit + 1 }}</span>
+      <button
+        class="boton boton--secundario boton--chico"
+        type="button"
+        [disabled]="!hayMas() || cargando()"
+        (click)="paginaSiguiente()"
+      >
+        Siguiente
+      </button>
+    </nav>
+  }
+</section>

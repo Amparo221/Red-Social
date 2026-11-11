@@ -51,6 +51,12 @@ export class Publicaciones implements OnInit {
   /** El saludo de bienvenida se muestra sólo al volver del registro. */
   protected readonly recienRegistrado = this.ruta.snapshot.queryParamMap.has('bienvenida');
 
+  /**
+   * `?denegado=1` lo pone el `adminGuard`: un usuario común intentó abrir el
+   * dashboard de administración y se lo devolvió al feed.
+   */
+  protected readonly accesoDenegado = this.ruta.snapshot.queryParamMap.get('denegado') === '1';
+
   /** El backend ya manda `hayMas`, pero así queda bien después de crear o borrar. */
   protected readonly hayMas = computed(() => this.publicaciones().length < this.total());
 

@@ -105,4 +105,27 @@ describe('authInterceptor', () => {
     expect(auth.estaLogueado()).toBe(true);
     expect(router.navigate).not.toHaveBeenCalled();
   });
+
+  it('si la cuenta fue deshabilitada avisa con ?sesion=deshabilitada', () => {
+    http.get(`${environment.apiUrl}/publicaciones`).subscribe({ error: () => undefined });
+
+    control
+      .expectOne(`${environment.apiUrl}/publicaciones`)
+      .flush(
+        {
+          statusCode: 401,
+          message: 'Tu cuenta está deshabilitada. Contactá a un administrador.',
+          error: 'Unauthorized',
+          motivo: 'CUENTA_DESHABILITADA',
+        },
+        { status: 401, statusText: 'Unauthorized' },
+      );
+
+    // En los dos casos se cierra la sesión; cambia el cartel del login.
+    expect(auth.estaLogueado()).toBe(false);
+    expect(localStorage.getItem(CLAVE_SESION)).toBeNull();
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { sesion: 'deshabilitada' },
+    });
+  });
 });
