@@ -122,11 +122,38 @@ valores viejos:
    `services` del proyecto.
 2. **Volver a desplegar**: `vercel --prod` o *Deployments → ⋯ → Redeploy*.
 3. Verificar: `curl https://<dominio>/api/auth/sesion` tiene que devolver
-   `{"expiracionSegundos":60,"avisoSegundos":20}`. `GET /api/salud` informa en `variablesDeEntorno` si
-   falta alguna (existencia, no valores).
+   `{"expiracionSegundos":900,"avisoSegundos":300}` (o `60`/`20` si se está probando la demo). `GET /api/salud`
+   informa en `variablesDeEntorno` si falta alguna (existencia, no valores).
 4. En el navegador: **cerrar sesión y volver a entrar** —el token guardado conserva el `exp` viejo— y
    recargar con `Ctrl+F5`, porque `politicaSesion()` cachea la respuesta una vez por carga de página.
-5. Para la demo alcanzan `60`/`20`; después conviene volver a `900`/`300` y redeployar otra vez.
+5. Para la demo alcanzan `60`/`20`; **después hay que volver a `900`/`300` y redeployar**, o los usuarios
+   reales ven el aviso al minuto. Los valores del repo (`backend/.env.example`) son siempre `900`/`300`.
+
+#### Si `npm run start:dev` dice `Found 0 errors` pero muere con `Cannot find module ...\dist\main`
+
+El watch **no** falló: `tsc` compiló sin errores pero **no emitió nada**, así que `dist/` quedó vacío y Nest
+no tuvo qué ejecutar.
+
+Pasa por la combinación de dos cosas:
+
+- `nest-cli.json` tiene `compilerOptions.deleteOutDir: true`, así que `nest start` / `nest build` **borran
+  `dist/`** al arrancar.
+- `tsc` guarda su cache incremental (`incremental: true`) en un `.tsbuildinfo`. Si ese archivo queda **fuera**
+  de `dist/` (al lado del `tsconfig`), el borrado no lo toca, `tsc` lo lee, cree que ya emitió todo y se saltea
+  el emit.
+
+Por eso `tsconfig.build.json` fija `"tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"`: el cache vive
+dentro de `dist/`, se borra junto con él y el emit siempre ocurre. Si alguna vez ves el síntoma con un
+`.tsbuildinfo` viejo dando vueltas:
+
+```bash
+cd backend
+rm -f tsconfig.build.tsbuildinfo tsconfig.tsbuildinfo dist -r
+npm run build          # tiene que dejar dist/main.js
+npm run start:dev
+```
+
+`*.tsbuildinfo` está en el `.gitignore` de la raíz: es estado local del compilador, no se versiona.
 
 #### Si el deploy devuelve `FUNCTION_INVOCATION_FAILED` en **todas** las rutas
 
@@ -1267,6 +1294,7 @@ borrar, `eliminado` pasa a `true` con `fechaEliminacion` (el documento no se bor
 | D30 | Listar comentarios exige que la publicación exista y no esté eliminada | Un 404 explica el problema mejor que un array vacío cuando el detalle se abrió desde un link viejo |
 | D31 | `texto` con `trim` en el DTO **y** en el esquema, máx. **500** | El front limita el textarea a 500 y el backend no confía en el front: un request manual no puede guardar `"   "` |
 | D32 | Tests de `ComentarioService` con modelos mockeados (sin Atlas) | Los 9 casos (listar/crear/eliminar, 403/404/500) corren siempre, igual que los del feed |
+| D33 | `tsBuildInfoFile` dentro de `dist/` (`tsconfig.build.json`) | `nest-cli.json` usa `deleteOutDir`; con el `.tsbuildinfo` al lado del `tsconfig` sobrevivía al borrado, `tsc` se salteaba el emit y `start:dev` moría con `Cannot find module dist/main` |
 
 ---
 

@@ -1,7 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // El cache incremental tiene que vivir DENTRO de dist: nest-cli.json usa
+    // `deleteOutDir`, así que si el .tsbuildinfo queda al lado del tsconfig
+    // sobrevive al borrado y tsc cree que ya emitió todo -> dist vacío ->
+    // `node dist/main` muere con MODULE_NOT_FOUND.
+    "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
   },
   "include": ["src"],
   "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
