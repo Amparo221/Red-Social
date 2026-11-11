@@ -1,0 +1,139 @@
+@if (cargando()) {
+  <section class="tarjeta tarjeta--media">
+    <p class="publicacion__estado" role="status">Cargando publicación…</p>
+  </section>
+} @else if (!publicacion()) {
+  <section class="tarjeta tarjeta--media">
+    <div class="alerta alerta--error" role="alert" aria-live="polite">
+      @if (errores().length === 1) {
+        <p>{{ errores()[0] }}</p>
+      } @else {
+        <ul>
+          @for (mensaje of errores(); track $index) {
+            <li>{{ mensaje }}</li>
+          }
+        </ul>
+      }
+      <button class="boton boton--secundario boton--chico" type="button" (click)="volverAlFeed()">
+        Volver al feed
+      </button>
+    </div>
+  </section>
+} @else {
+  @let p = publicacion()!;
+
+  <article class="publicacion--detalle tarjeta">
+    @if (errores().length > 0) {
+      <div class="alerta alerta--error" role="alert" aria-live="polite">
+        @if (errores().length === 1) {
+          <p>{{ errores()[0] }}</p>
+        } @else {
+          <ul>
+            @for (mensaje of errores(); track $index) {
+              <li>{{ mensaje }}</li>
+            }
+          </ul>
+        }
+      </div>
+    }
+
+    <button
+      class="boton boton--secundario boton--chico publicacion__volver"
+      type="button"
+      (click)="volverAlFeed()"
+    >
+      ← Volver al feed
+    </button>
+
+    <header class="publicacion__cabecera">
+      <img class="avatar" [src]="avatarAutor()" [alt]="'Foto de perfil de ' + nombreAutor()" />
+
+      <div class="publicacion__autor">
+        <p class="publicacion__nombre">{{ nombreAutor() }}</p>
+        <p class="publicacion__meta">
+          @if (autor(); as autorPublicacion) {
+            <span>&#64;{{ autorPublicacion.nombreUsuario }}</span>
+            <span aria-hidden="true">·</span>
+          }
+          <time [attr.datetime]="p.createdAt ?? null" [title]="fechaCompleta(p.createdAt)">
+            {{ fechaRelativa(p.createdAt) }}
+          </time>
+        </p>
+      </div>
+
+      @if (puedeEliminar()) {
+        @if (confirmandoBorrado()) {
+          <div class="publicacion__confirmacion">
+            <span class="publicacion__pregunta">¿Eliminar esta publicación?</span>
+            <button
+              class="boton boton--peligro boton--chico"
+              type="button"
+              [disabled]="borrando()"
+              (click)="confirmarBorrado()"
+            >
+              {{ borrando() ? 'Eliminando…' : 'Sí, borrar' }}
+            </button>
+            <button
+              class="boton boton--secundario boton--chico"
+              type="button"
+              [disabled]="borrando()"
+              (click)="cancelarBorrado()"
+            >
+              No
+            </button>
+          </div>
+        } @else {
+          <button
+            class="enlace-eliminar"
+            type="button"
+            [disabled]="borrando()"
+            (click)="pedirConfirmacion()"
+          >
+            Eliminar
+          </button>
+        }
+      }
+    </header>
+
+    <h1 class="publicacion__titulo">{{ p.titulo }}</h1>
+    <p class="publicacion__texto">{{ p.descripcion }}</p>
+
+    @if (p.nombreComun || p.nombreCientifico) {
+      <p class="publicacion__ave">
+        @if (p.nombreComun) {
+          <span class="etiqueta">{{ p.nombreComun }}</span>
+        }
+        @if (p.nombreCientifico) {
+          <em class="publicacion__cientifico">{{ p.nombreCientifico }}</em>
+        }
+      </p>
+    }
+
+    @if (p.imagenUrl) {
+      <img
+        class="publicacion__imagen"
+        [src]="p.imagenUrl"
+        [alt]="'Foto de ' + p.titulo"
+        loading="lazy"
+        decoding="async"
+      />
+    }
+
+    <footer class="publicacion__pie">
+      <button
+        class="me-gusta"
+        type="button"
+        [class.me-gusta--activo]="p.likeado"
+        [attr.aria-pressed]="p.likeado"
+        [attr.aria-label]="'Me gusta (' + p.cantidadLikes + ')'"
+        [disabled]="likeEnCurso()"
+        (click)="alternarLike()"
+      >
+        <span class="me-gusta__icono" aria-hidden="true">{{ p.likeado ? '♥' : '♡' }}</span>
+        <span class="me-gusta__contador">{{ p.cantidadLikes }}</span>
+      </button>
+    </footer>
+
+    <app-comentarios [idPublicacion]="p.id" />
+  </article>
+}

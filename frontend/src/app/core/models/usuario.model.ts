@@ -51,6 +51,27 @@ export interface ErrorNest {
   error?: string;
 }
 
+/**
+ * Tiempos de la sesión que expone `GET /auth/sesion` (Sprint 4).
+ * Salen del `.env` del backend (`JWT_EXPIRES_IN` y `SESION_AVISO_SEGUNDOS`),
+ * así que el front no los hardcodea: los pide al arrancar.
+ */
+export interface PoliticaSesion {
+  /** Duración total del JWT, en segundos. */
+  expiracionSegundos: number;
+  /** Cuántos segundos antes del vencimiento aparece el aviso. */
+  avisoSegundos: number;
+}
+
+/**
+ * Fallback si `/auth/sesion` no responde (backend caído o versión vieja):
+ * son los mismos valores por defecto del backend, para no quedar sin aviso.
+ */
+export const POLITICA_SESION_POR_DEFECTO: PoliticaSesion = {
+  expiracionSegundos: 900,
+  avisoSegundos: 300,
+};
+
 /** Avatar que se muestra si el usuario no tiene foto propia. */
 export const AVATAR_POR_DEFECTO = 'avatar-por-defecto.svg';
 

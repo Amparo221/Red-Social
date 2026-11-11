@@ -1,0 +1,246 @@
+/* ===== Comentarios (Sprint 4) =====
+   Vive en su propio componente porque la lista se usa en el detalle de la
+   publicación y también en el perfil (ahí en modo sólo lectura). */
+
+.comentarios {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--cielo-200);
+}
+
+/* Variante "embebida" (perfil): los comentarios se proyectan dentro de la
+   tarjeta de la publicación, así que no agregan borde, fondo ni una caja
+   propia: se leen como una sección más del mismo contenedor. */
+.comentarios--embebido {
+  margin-top: 0.75rem;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.comentarios--embebido .comentarios__titulo {
+  font-size: 1.05rem;
+  margin-bottom: 0.6rem;
+}
+
+.comentarios--embebido .comentarios__lista {
+  gap: 0.5rem;
+}
+
+.comentarios--embebido .comentario {
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.comentarios--embebido .comentarios__estado,
+.comentarios--embebido .comentarios__vacio {
+  margin: 0.4rem 0 0;
+  text-align: left;
+}
+
+.comentarios__titulo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+}
+
+/* "3 de 12": deja claro que la lista está paginada. */
+.comentarios__total {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.comentarios__estado,
+.comentarios__vacio {
+  margin: 1rem 0;
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.comentarios__vacio {
+  font-size: 1rem;
+}
+
+.comentarios__lista {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.comentario {
+  padding: 0.75rem;
+  border: 1px solid var(--cielo-200);
+  border-radius: 0.5rem;
+  background: var(--cielo-50);
+}
+
+.comentario__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.comentario__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--cielo-100);
+  border: 1px solid var(--cielo-200);
+}
+
+.comentario__autor {
+  font-weight: 600;
+}
+
+.comentario__usuario {
+  color: var(--cielo-600);
+}
+
+/* Empuja la fecha (y lo que sigue) al extremo derecho de la cabecera. */
+.comentario__fecha {
+  margin-left: auto;
+  color: var(--texto-suave);
+  font-size: 0.75rem;
+}
+
+/* Badge "editado": sólo informa, no es un botón. */
+.comentario__editado {
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--texto-suave);
+  background: var(--cielo-100);
+  border: 1px solid var(--cielo-200);
+  border-radius: 999px;
+  cursor: help;
+}
+
+.comentario__acciones {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.comentario__texto {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.comentario__edicion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.comentario__edicion .comentarios__input {
+  min-height: 64px;
+}
+
+.comentario__edicion-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.comentario__edicion-acciones .comentarios__limite {
+  margin: 0 auto 0 0;
+  text-align: left;
+}
+
+/* "Cargar más" queda entre la lista y el formulario. */
+.comentarios__mas {
+  margin-bottom: 1rem;
+}
+
+.comentarios__form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.comentarios__input {
+  flex: 1;
+  min-height: 80px;
+  resize: vertical;
+  font: inherit;
+  padding: 0.5rem;
+  border: 1px solid var(--cielo-200);
+  border-radius: 0.5rem;
+}
+
+.comentarios__limite {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+  text-align: right;
+}
+
+/* Acciones del comentario: texto chico, sin fondo, como el borrar del detalle. */
+.enlace-eliminar,
+.enlace-accion {
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radio-chico);
+  cursor: pointer;
+}
+
+.enlace-eliminar:hover:not(:disabled) {
+  color: var(--error);
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+
+.enlace-accion:hover:not(:disabled) {
+  color: var(--cielo-600);
+  background: var(--cielo-100);
+  border-color: var(--cielo-200);
+}
+
+.enlace-eliminar:disabled,
+.enlace-accion:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Etiqueta sólo para lectores de pantalla. */
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 520px) {
+  .comentarios__form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

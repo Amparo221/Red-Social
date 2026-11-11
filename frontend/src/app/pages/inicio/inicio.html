@@ -34,8 +34,50 @@
       }
     </dl>
 
-    <div class="acciones">
-      <button class="boton boton--secundario" type="button" (click)="salir()">Cerrar sesión</button>
-    </div>
+    <section class="mis-publicaciones">
+      <h2>Mis publicaciones</h2>
+
+      @if (cargandoMisPublicaciones()) {
+        <p class="mis-publicaciones__estado">Cargando tus publicaciones…</p>
+      } @else if (erroresMisPublicaciones().length > 0) {
+        <div class="alerta alerta--error" role="alert" aria-live="polite">
+          @if (erroresMisPublicaciones().length === 1) {
+            <p>{{ erroresMisPublicaciones()[0] }}</p>
+          } @else {
+            <ul>
+              @for (mensaje of erroresMisPublicaciones(); track $index) {
+                <li>{{ mensaje }}</li>
+              }
+            </ul>
+          }
+          <button class="boton boton--secundario boton--chico" type="button" (click)="cargarMisPublicaciones()">Reintentar</button>
+        </div>
+      } @else if (misPublicaciones().length === 0) {
+        <p class="mis-publicaciones__vacio">Todavía no publicaste nada. ¡Compartí tu primer avistaje desde el feed!</p>
+      } @else {
+        @for (publicacion of misPublicaciones(); track publicacion.id) {
+          <div class="mis-publicaciones__item">
+            <app-publicacion-card
+              [publicacion]="publicacion"
+              [idUsuario]="idUsuario()"
+              [esAdministrador]="esAdministrador()"
+              [ocupada]="false"
+              (meGusta)="alternarLike(publicacion)"
+              (eliminar)="eliminarMis(publicacion)"
+              (abrir)="abrirDetalle(publicacion)"
+            >
+              <!-- Sprint 4: los comentarios van DENTRO de la tarjeta (el
+                   `ng-content` de app-publicacion-card), en sólo lectura y sin
+                   borde ni fondo propios, para que no parezcan otra caja. -->
+              <app-comentarios
+                [idPublicacion]="publicacion.id"
+                [soloLectura]="true"
+                [embebido]="true"
+              />
+            </app-publicacion-card>
+          </div>
+        }
+      }
+    </section>
   </section>
 }

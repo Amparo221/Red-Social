@@ -38,6 +38,15 @@ export class PublicacionesController {
     return this.publicacionesService.crear(createDto, usuario, archivo);
   }
 
+  /** GET /publicaciones/:id → 200 con la publicación y su autor populado. */
+  @Get(':id')
+  async obtenerUno(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @UsuarioActual() usuario: UsuarioAutenticado,
+  ) {
+    return this.publicacionesService.obtenerUno(id, usuario.id);
+  }
+
   /** GET /publicaciones?offset=0&limit=5&orden=fecha|likes&usuario=<id> → 200 */
   @Get()
   async listar(

@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { PublicacionesModule } from './publicaciones/publicaciones.module';
 import { SaludModule } from './salud/salud.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
+import { ComentarioModule } from './comentarios/comentario.module';
 
 @Module({
   imports: [
@@ -32,6 +33,9 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     UsuariosModule,
     PublicacionesModule,
     SaludModule,
+    // Sprint 3: comentarios. El modelo Comentario referencia a Publicacion y a
+    // Usuario, ambos ya registrados por sus módulos.
+    ComentarioModule,
   ],
 })
 export class AppModule {}

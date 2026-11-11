@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   PUBLICACIONES_POR_PAGINA,
   type FiltrosPublicaciones,
@@ -31,6 +31,7 @@ export class Publicaciones implements OnInit {
   private readonly publicacionesService = inject(PublicacionesService);
   private readonly auth = inject(AuthService);
   private readonly ruta = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   protected readonly usuario = this.auth.usuarioActual;
   protected readonly idUsuario = computed(() => this.usuario()?.id ?? null);
@@ -43,7 +44,6 @@ export class Publicaciones implements OnInit {
   protected readonly errores = signal<string[]>([]);
   protected readonly aviso = signal<string | null>(null);
   protected readonly orden = signal<OrdenPublicaciones>('fecha');
-  protected readonly soloMias = signal(false);
 
   /** Publicaciones con un like o un borrado en vuelo (se deshabilitan sus botones). */
   private readonly enCurso = signal<ReadonlySet<string>>(new Set());
@@ -70,11 +70,6 @@ export class Publicaciones implements OnInit {
       return;
     }
     this.orden.set(orden);
-    this.cargar();
-  }
-
-  protected alternarMias(): void {
-    this.soloMias.update((valor) => !valor);
     this.cargar();
   }
 
@@ -208,6 +203,11 @@ export class Publicaciones implements OnInit {
     return this.enCurso().has(publicacion.id);
   }
 
+  /** Click en cualquier parte de la tarjeta (menos el like): abre el detalle. */
+  protected abrirDetalle(publicacion: Publicacion): void {
+    void this.router.navigate(['/publicaciones', publicacion.id]);
+  }
+
   // ---------- helpers ----------
 
   private filtros(offset: number): FiltrosPublicaciones {
@@ -215,7 +215,6 @@ export class Publicaciones implements OnInit {
       offset,
       limit: PUBLICACIONES_POR_PAGINA,
       orden: this.orden(),
-      usuario: this.soloMias() ? (this.idUsuario() ?? undefined) : undefined,
     };
   }
 

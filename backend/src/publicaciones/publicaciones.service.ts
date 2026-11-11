@@ -203,6 +203,23 @@ export class PublicacionesService {
   }
 
   /**
+   * GET /publicaciones/:id: detalle de una publicación (Sprint 3).
+   * Devuelve 404 si no existe o fue eliminada.
+   */
+  async obtenerUno(id: string, idUsuarioActual?: string) {
+    const publicacion = await this.publicacionModel
+      .findOne({ _id: id, eliminado: false })
+      .populate('usuario', CAMPOS_AUTOR)
+      .exec();
+
+    if (!publicacion) {
+      throw new NotFoundException(NO_EXISTE);
+    }
+
+    return toPublicacionResponse(publicacion, idUsuarioActual);
+  }
+
+  /**
    * DELETE /publicaciones/:id: baja lógica. Sólo el autor o un administrador.
    */
   async eliminar(

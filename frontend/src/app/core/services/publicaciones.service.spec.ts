@@ -156,4 +156,125 @@ describe('PublicacionesService', () => {
 
     expect(eliminado).toBe(true);
   });
+
+  it('pide el detalle con GET /:id', () => {
+    let titulo = '';
+    servicio.obtenerUno(ID).subscribe((publicacion) => (titulo = publicacion.titulo));
+
+    const pedido = http.expectOne(`${URL_PUBLICACIONES}/${ID}`);
+    expect(pedido.request.method).toBe('GET');
+
+    pedido.flush(PUBLICACION);
+
+    expect(titulo).toBe('Tordo músico');
+  });
+
+  it('lista los comentarios paginados con GET /:id/comentarios', () => {
+    let cantidad = -1;
+    let hayMas = false;
+    servicio.listarComentarios(ID).subscribe((listado) => {
+      cantidad = listado.comentarios.length;
+      hayMas = listado.hayMas;
+    });
+
+    // Con parámetros de query hay que matchear por URL: expectOne(string) exige
+    // la URL exacta, query string incluida.
+    const pedido = http.expectOne(
+      (req) => req.url === `${URL_PUBLICACIONES}/${ID}/comentarios`,
+    );
+    expect(pedido.request.method).toBe('GET');
+    // Sprint 4: la lista viene paginada, con los mismos defaults que la pantalla.
+    expect(pedido.request.params.get('offset')).toBe('0');
+    expect(pedido.request.params.get('limit')).toBe('3');
+
+    pedido.flush({
+      total: 4,
+      offset: 0,
+      limit: 3,
+      hayMas: true,
+      comentarios: [
+        {
+          id: 'c1',
+          texto: '¡Qué lindo avistaje!',
+          autor: {
+            id: ID_AUTOR,
+            nombre: 'Ana',
+            apellido: 'Moreno',
+            nombreUsuario: 'anamoreno',
+            imagenPerfilUrl: '',
+          },
+          createdAt: '2026-10-30T12:05:00.000Z',
+          eliminado: false,
+          editado: false,
+          fechaEdicion: null,
+        },
+      ],
+    });
+
+    expect(cantidad).toBe(1);
+    expect(hayMas).toBe(true);
+  });
+
+  it('pide otra página de comentarios con offset y limit', () => {
+    servicio.listarComentarios(ID, { offset: 3, limit: 3 }).subscribe();
+
+    const pedido = http.expectOne(
+      (req) => req.url === `${URL_PUBLICACIONES}/${ID}/comentarios`,
+    );
+    expect(pedido.request.params.get('offset')).toBe('3');
+    expect(pedido.request.params.get('limit')).toBe('3');
+
+    pedido.flush({ total: 4, offset: 3, limit: 3, hayMas: false, comentarios: [] });
+  });
+
+  it('edita un comentario con PATCH y el texto recortado', () => {
+    let editado = false;
+    servicio
+      .editarComentario('c1', '  Texto corregido  ')
+      .subscribe((comentario) => (editado = comentario.editado === true));
+
+    const pedido = http.expectOne(`${environment.apiUrl}/comentarios/c1`);
+    expect(pedido.request.method).toBe('PATCH');
+    expect(pedido.request.body).toEqual({ texto: 'Texto corregido' });
+
+    pedido.flush({
+      id: 'c1',
+      texto: 'Texto corregido',
+      autor: ID_AUTOR,
+      eliminado: false,
+      editado: true,
+      fechaEdicion: '2026-10-31T09:00:00.000Z',
+    });
+
+    expect(editado).toBe(true);
+  });
+
+  it('crea un comentario con POST y el texto recortado', () => {
+    let texto = '';
+    servicio.crearComentario(ID, '  Muy buena foto  ').subscribe((comentario) => (texto = comentario.texto));
+
+    const pedido = http.expectOne(`${URL_PUBLICACIONES}/${ID}/comentarios`);
+    expect(pedido.request.method).toBe('POST');
+    // El DTO del backend espera `texto`, no `contenido`.
+    expect(pedido.request.body).toEqual({ texto: 'Muy buena foto' });
+
+    pedido.flush(
+      { id: 'c1', texto: 'Muy buena foto', autor: ID_AUTOR, eliminado: false },
+      { status: 201, statusText: 'Created' },
+    );
+
+    expect(texto).toBe('Muy buena foto');
+  });
+
+  it('elimina un comentario con DELETE /comentarios/:id (otro recurso)', () => {
+    let eliminado = false;
+    servicio.eliminarComentario('c1').subscribe((resultado) => (eliminado = resultado.eliminado));
+
+    const pedido = http.expectOne(`${environment.apiUrl}/comentarios/c1`);
+    expect(pedido.request.method).toBe('DELETE');
+
+    pedido.flush({ id: 'c1', eliminado: true });
+
+    expect(eliminado).toBe(true);
+  });
 });

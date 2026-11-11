@@ -1,0 +1,170 @@
+<section
+  class="comentarios"
+  [class.comentarios--embebido]="embebido()"
+  role="region"
+  aria-label="Comentarios"
+>
+  <h2 class="comentarios__titulo">
+    Comentarios
+    @if (total() > 0) {
+      <span class="comentarios__total">{{ comentarios().length }} de {{ total() }}</span>
+    }
+  </h2>
+
+  @if (errores().length > 0) {
+    <div class="alerta alerta--error" role="alert" aria-live="polite">
+      @if (errores().length === 1) {
+        <p>{{ errores()[0] }}</p>
+      } @else {
+        <ul>
+          @for (mensaje of errores(); track $index) {
+            <li>{{ mensaje }}</li>
+          }
+        </ul>
+      }
+      <button class="boton boton--secundario boton--chico" type="button" (click)="cargar()">
+        Reintentar
+      </button>
+    </div>
+  }
+
+  @if (cargando()) {
+    <p class="comentarios__estado" role="status">Cargando comentarios…</p>
+  } @else if (comentarios().length > 0) {
+    <ul class="comentarios__lista">
+      @for (comentario of comentarios(); track comentario.id) {
+        <li class="comentario">
+          <div class="comentario__cabecera">
+            <img
+              class="comentario__avatar"
+              [src]="avatarDe(comentario)"
+              [alt]="'Foto de perfil de ' + nombreDe(comentario)"
+            />
+            <span class="comentario__autor">{{ nombreDe(comentario) }}</span>
+            @if (usuarioDe(comentario); as nombreUsuario) {
+              <span class="comentario__usuario">&#64;{{ nombreUsuario }}</span>
+            }
+            <time
+              class="comentario__fecha"
+              [attr.datetime]="comentario.createdAt ?? null"
+              [title]="fechaCompleta(comentario.createdAt)"
+            >
+              {{ fechaRelativa(comentario.createdAt) }}
+            </time>
+
+            @if (yaEditado(comentario)) {
+              <span
+                class="comentario__editado"
+                [title]="'Editado el ' + fechaCompleta(comentario.fechaEdicion)"
+              >
+                editado
+              </span>
+            }
+
+            @if (!soloLectura()) {
+              <span class="comentario__acciones">
+                @if (puedeEditar(comentario) && !estaEditando(comentario)) {
+                  <button
+                    class="enlace-accion"
+                    type="button"
+                    [disabled]="estaEliminando(comentario.id)"
+                    (click)="comenzarEdicion(comentario)"
+                  >
+                    Editar
+                  </button>
+                }
+                @if (puedeEliminar(comentario)) {
+                  <button
+                    class="enlace-eliminar"
+                    type="button"
+                    [disabled]="estaEliminando(comentario.id)"
+                    (click)="eliminar(comentario)"
+                  >
+                    {{ estaEliminando(comentario.id) ? 'Eliminando…' : 'Eliminar' }}
+                  </button>
+                }
+              </span>
+            }
+          </div>
+
+          @if (estaEditando(comentario)) {
+            <div class="comentario__edicion">
+              <label class="visualmente-oculto" [attr.for]="'editar-' + comentario.id">
+                Editar comentario
+              </label>
+              <textarea
+                [id]="'editar-' + comentario.id"
+                class="comentarios__input"
+                [attr.maxlength]="maximoTexto"
+                [value]="textoEdicion()"
+                [disabled]="guardandoEdicion()"
+                (input)="actualizarTextoEdicion($event)"
+              ></textarea>
+              <div class="comentario__edicion-acciones">
+                <span class="comentarios__limite">
+                  {{ textoEdicion().length }}/{{ maximoTexto }}
+                </span>
+                <button
+                  class="boton boton--secundario boton--chico"
+                  type="button"
+                  [disabled]="guardandoEdicion()"
+                  (click)="cancelarEdicion()"
+                >
+                  Cancelar
+                </button>
+                <button
+                  class="boton boton--primario boton--chico"
+                  type="button"
+                  [disabled]="!textoEdicion().trim() || guardandoEdicion()"
+                  (click)="guardarEdicion(comentario)"
+                >
+                  {{ guardandoEdicion() ? 'Guardando…' : 'Guardar' }}
+                </button>
+              </div>
+            </div>
+          } @else {
+            <p class="comentario__texto">{{ comentario.texto }}</p>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (hayMas()) {
+      <button
+        class="boton boton--secundario boton--chico comentarios__mas"
+        type="button"
+        [disabled]="cargandoMas()"
+        (click)="cargarMas()"
+      >
+        {{ cargandoMas() ? 'Cargando…' : 'Cargar más comentarios' }}
+      </button>
+    }
+  } @else if (errores().length === 0) {
+    <p class="comentarios__vacio">Todavía no hay comentarios.</p>
+  }
+
+  @if (!soloLectura()) {
+    <div class="comentarios__form">
+      <label class="visualmente-oculto" for="texto-comentario">Escribí un comentario</label>
+      <textarea
+        id="texto-comentario"
+        class="comentarios__input"
+        placeholder="Escribí un comentario…"
+        [attr.maxlength]="maximoTexto"
+        [value]="texto()"
+        [disabled]="enviando()"
+        (input)="actualizarTexto($event)"
+      ></textarea>
+      <button
+        class="boton boton--primario boton--chico"
+        type="button"
+        [disabled]="!texto().trim() || enviando()"
+        (click)="agregar()"
+      >
+        {{ enviando() ? 'Enviando…' : 'Comentar' }}
+      </button>
+    </div>
+
+    <p class="comentarios__limite">{{ texto().length }}/{{ maximoTexto }} caracteres</p>
+  }
+</section>

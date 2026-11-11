@@ -6,6 +6,13 @@
   border: 1px solid var(--cielo-200);
   border-radius: var(--radio);
   box-shadow: var(--sombra);
+  /* Toda la tarjeta abre el detalle: el cursor y el hover lo avisan. */
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.publicacion:hover {
+  border-color: var(--cielo-300);
 }
 
 /* ---------- cabecera con el autor ---------- */
@@ -76,8 +83,17 @@
 
 /* ---------- contenido ---------- */
 .publicacion__titulo {
-  margin-bottom: 0.4rem;
+  margin: 0 0 0.4rem;
   font-size: 1.15rem;
+}
+
+.publicacion__titulo-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.publicacion__titulo-link:hover {
+  text-decoration: underline;
 }
 
 .publicacion__texto {
@@ -108,6 +124,18 @@
   background: var(--cielo-100);
   border: 1px solid var(--cielo-200);
   border-radius: var(--radio-chico);
+}
+
+/* ---------- contenido proyectado (comentarios del perfil) ---------- */
+/* Va adentro de la tarjeta blanca, así que no trae borde ni fondo propios.
+   `:empty` evita que el feed (donde no se proyecta nada) gane un hueco. */
+.publicacion__extra {
+  margin-top: 1rem;
+  cursor: default;
+}
+
+.publicacion__extra:empty {
+  display: none;
 }
 
 /* ---------- pie con el me gusta ---------- */

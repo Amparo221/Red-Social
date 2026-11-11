@@ -26,6 +26,7 @@ const VARIABLES_DE_ENTORNO = [
   'DEFAULT_AVATAR_URL',
   'JWT_SECRET',
   'JWT_EXPIRES_IN',
+  'SESION_AVISO_SEGUNDOS',
 ] as const;
 
 /**

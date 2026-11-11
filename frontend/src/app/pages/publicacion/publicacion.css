@@ -1,0 +1,179 @@
+.publicacion--detalle {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* El "volver" va arriba y solo: en el header competiría con el avatar. */
+.publicacion__volver {
+  margin-bottom: 1rem;
+}
+
+.publicacion__estado {
+  margin: 0;
+  padding: 1rem;
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+.publicacion__pregunta {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--error);
+}
+
+.publicacion__confirmacion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.publicacion__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--cielo-200);
+  margin-bottom: 1rem;
+}
+
+.publicacion__cabecera .avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.publicacion__autor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.publicacion__nombre {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.publicacion__meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  margin: 0;
+}
+
+.publicacion__meta time {
+  font-style: normal;
+}
+
+.publicacion__titulo {
+  font-size: 1.75rem;
+  margin: 0 0 1rem;
+  line-height: 1.3;
+}
+
+.publicacion__texto {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  white-space: pre-wrap;
+}
+
+.publicacion__ave {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+.publicacion__cientifico {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.publicacion__imagen {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.publicacion__pie {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cielo-200);
+}
+
+/* ===== Me gusta (misma píldora que la tarjeta del feed) ===== */
+
+.me-gusta {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+  background: var(--cielo-50);
+  border: 1.5px solid var(--cielo-200);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.me-gusta:hover:not(:disabled) {
+  color: var(--error);
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+
+.me-gusta--activo {
+  color: var(--error);
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+
+.me-gusta__icono {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.me-gusta:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Borrar no es la acción principal: texto chico, rojo, sin fondo. */
+.enlace-eliminar {
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--texto-suave);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radio-chico);
+  cursor: pointer;
+}
+
+.enlace-eliminar:hover:not(:disabled) {
+  color: var(--error);
+  background: var(--error-fondo);
+  border-color: var(--error-borde);
+}
+
+.enlace-eliminar:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+

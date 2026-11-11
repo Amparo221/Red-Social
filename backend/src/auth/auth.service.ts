@@ -19,6 +19,7 @@ import {
 } from '../usuarios/utils/usuario-response.util';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { leerPoliticaSesion, PoliticaSesion } from './utils/sesion-config.util';
 
 const SALT_ROUNDS = 10;
 const CREDENCIALES_INVALIDAS = 'Usuario/correo o contraseña incorrectos';
@@ -151,6 +152,49 @@ export class AuthService {
     }
 
     return this.conToken(toUsuarioResponse(usuario));
+  }
+
+  /**
+   * GET /auth/autorizar
+   *
+   * Lo llama el front al arrancar: el `JwtAuthGuard` ya validó la firma y el
+   * vencimiento del token, acá sólo confirmamos que el usuario del payload
+   * sigue existiendo y devolvemos sus datos frescos.
+   *
+   * No firma un token nuevo a propósito: esto valida la sesión guardada en el
+   * navegador, no la renueva. Para renovarla está `POST /auth/refrescar`.
+   */
+  async autorizar(id: string): Promise<UsuarioResponse> {
+    const usuario = await this.usuarioModel.findById(id).exec();
+
+    if (!usuario) {
+      throw new UnauthorizedException('El usuario del token ya no existe');
+    }
+
+    return toUsuarioResponse(usuario);
+  }
+
+  /**
+   * GET /auth/sesion (público)
+   *
+   * Tiempos de la sesión para que el frontend no los hardcodee: el splash, el
+   * cronómetro y el modal de aviso se ajustan solos cambiando
+   * `JWT_EXPIRES_IN` / `SESION_AVISO_SEGUNDOS` en el `.env` del backend.
+   */
+  politicaSesion(): PoliticaSesion {
+    return leerPoliticaSesion(this.configService);
+  }
+
+  /**
+   * POST /auth/refrescar
+   *
+   * Renueva la sesión sin pedir la contraseña otra vez: el `JwtAuthGuard`
+   * confirmó que el token actual es válido y acá se firma uno nuevo con la
+   * misma duración. Es lo que llama el botón "Extender sesión" del aviso.
+   */
+  async refrescar(id: string): Promise<UsuarioConToken> {
+    // Reutiliza la validación de `autorizar`: si el usuario ya no existe, 401.
+    return this.conToken(await this.autorizar(id));
   }
 
   /**

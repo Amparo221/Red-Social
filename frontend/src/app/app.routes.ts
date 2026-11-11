@@ -22,6 +22,12 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/publicaciones/publicaciones').then((m) => m.Publicaciones),
   },
   {
+    path: 'publicaciones/:id',
+    title: 'IdentiBird · Publicación',
+    canActivate: [sesionGuard],
+    loadComponent: () => import('./pages/publicacion/publicacion').then((m) => m.Publicacion),
+  },
+  {
     path: 'inicio',
     title: 'IdentiBird · Mi perfil',
     canActivate: [sesionGuard],

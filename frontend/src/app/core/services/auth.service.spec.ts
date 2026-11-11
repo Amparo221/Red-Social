@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
-import type { NuevoUsuario, Sesion } from '../models/usuario.model';
+import type { NuevoUsuario, PoliticaSesion, Sesion, Usuario } from '../models/usuario.model';
+import { POLITICA_SESION_POR_DEFECTO } from '../models/usuario.model';
 import { AuthService, CLAVE_SESION } from './auth.service';
 
 const TOKEN = 'token-de-prueba';
@@ -135,6 +136,75 @@ describe('AuthService', () => {
     expect(nuevoServicio.estaLogueado()).toBe(true);
     expect(nuevoServicio.usuarioActual()?.nombreUsuario).toBe('anamoreno');
     expect(nuevoServicio.tokenActual()).toBe(TOKEN);
+  });
+
+  it('validarSesion pide GET /auth/autorizar y conserva el token guardado', () => {
+    TestBed.resetTestingModule();
+    localStorage.setItem(CLAVE_SESION, JSON.stringify(USUARIO));
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+
+    const servicioValidado = TestBed.inject(AuthService);
+    http = TestBed.inject(HttpTestingController);
+
+    let usuario: Usuario | undefined;
+    servicioValidado.validarSesion().subscribe((respuesta) => (usuario = respuesta));
+
+    const pedido = http.expectOne(`${environment.apiUrl}/auth/autorizar`);
+    expect(pedido.request.method).toBe('GET');
+
+    // El backend no firma un token nuevo: aunque el cuerpo traiga otro, se
+    // conserva el que ya tenía la sesión (y se refrescan los datos del perfil).
+    pedido.flush({ ...USUARIO, descripcion: 'Nueva bio', token: 'otro-token' });
+
+    expect(usuario?.descripcion).toBe('Nueva bio');
+    expect(servicioValidado.usuarioActual()?.descripcion).toBe('Nueva bio');
+    expect(servicioValidado.tokenActual()).toBe(TOKEN);
+  });
+
+  it('refrescar pide POST /auth/refrescar y reemplaza el token guardado', () => {
+    servicio.login({ identificador: 'ana@correo.com', password: 'Segura123' }).subscribe();
+    http.expectOne(`${environment.apiUrl}/auth/login`).flush(USUARIO);
+
+    servicio.refrescar().subscribe();
+
+    const pedido = http.expectOne(`${environment.apiUrl}/auth/refrescar`);
+    expect(pedido.request.method).toBe('POST');
+    pedido.flush({ ...USUARIO, token: 'token-renovado' });
+
+    expect(servicio.tokenActual()).toBe('token-renovado');
+    expect(servicio.usuarioActual()?.nombreUsuario).toBe('anamoreno');
+    expect(localStorage.getItem(CLAVE_SESION)).toContain('token-renovado');
+  });
+
+  it('politicaSesion pide /auth/sesion una sola vez (la cachea)', () => {
+    let politica: PoliticaSesion | undefined;
+
+    servicio.politicaSesion().subscribe((respuesta) => (politica = respuesta));
+
+    const pedido = http.expectOne(`${environment.apiUrl}/auth/sesion`);
+    expect(pedido.request.method).toBe('GET');
+    pedido.flush({ expiracionSegundos: 60, avisoSegundos: 20 });
+
+    expect(politica).toEqual({ expiracionSegundos: 60, avisoSegundos: 20 });
+
+    // Segunda llamada: sale de la cache, sin otro request.
+    servicio.politicaSesion().subscribe((respuesta) => (politica = respuesta));
+    http.expectNone(`${environment.apiUrl}/auth/sesion`);
+    expect(politica).toEqual({ expiracionSegundos: 60, avisoSegundos: 20 });
+  });
+
+  it('politicaSesion cae en los valores por defecto si el backend falla', () => {
+    let politica: PoliticaSesion | undefined;
+
+    servicio.politicaSesion().subscribe((respuesta) => (politica = respuesta));
+
+    http
+      .expectOne(`${environment.apiUrl}/auth/sesion`)
+      .flush({ message: 'error' }, { status: 500, statusText: 'Server Error' });
+
+    expect(politica).toEqual(POLITICA_SESION_POR_DEFECTO);
   });
 
   it('descarta la sesión guardada sin token (las del Sprint 1 ya no sirven)', () => {

@@ -103,3 +103,106 @@ export function esAutor(publicacion: Publicacion, idUsuario: string | null | und
   const autor = autorDe(publicacion);
   return !!idUsuario && !!autor && autor.id === idUsuario;
 }
+
+/**
+ * Comentario de una publicación.
+ * Contrato: backend/src/comentarios/utils/comentario-response.util.ts
+ */
+export interface Comentario {
+  id: string;
+  texto: string;
+  /**
+   * Autor populado en el detalle, pero el contrato admite el id suelto: si el
+   * autor se borró de la base, Mongoose deja el ObjectId como string.
+   */
+  autor: AutorPublicacion | string;
+  eliminado?: boolean;
+  /** true si el texto se editó alguna vez (badge "editado"). */
+  editado?: boolean;
+  /** Cuándo se editó por última vez (null si nunca). */
+  fechaEdicion?: string | null;
+  /** Los agrega `timestamps: true` en Mongoose. */
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Respuesta de DELETE /comentarios/:id (baja lógica, no borra el documento). */
+export interface ComentarioEliminado {
+  id: string;
+  eliminado: boolean;
+}
+
+/** Respuesta paginada de GET /publicaciones/:id/comentarios (Sprint 4). */
+export interface ListadoComentarios {
+  total: number;
+  offset: number;
+  limit: number;
+  hayMas: boolean;
+  comentarios: Comentario[];
+}
+
+/** Parámetros de GET /publicaciones/:id/comentarios (el backend tiene defaults). */
+export interface FiltrosComentarios {
+  offset?: number;
+  limit?: number;
+}
+
+/** El backend valida 1..500 caracteres (CrearComentarioDto). */
+export const MAXIMO_TEXTO_COMENTARIO = 500;
+
+/** Comentarios que se muestran al abrir la lista y en cada "cargar más". */
+export const COMENTARIOS_POR_PAGINA = 3;
+
+/** Autor del comentario, o null si el backend devolvió sólo el id. */
+export function autorComentarioDe(comentario: Comentario): AutorPublicacion | null {
+  return typeof comentario.autor === 'string' ? null : comentario.autor;
+}
+
+/** Nombre visible del autor de un comentario. */
+export function nombreAutorComentario(comentario: Comentario): string {
+  const autor = autorComentarioDe(comentario);
+  if (!autor) {
+    return 'Usuario eliminado';
+  }
+  const nombreCompleto = `${autor.nombre ?? ''} ${autor.apellido ?? ''}`.trim();
+  return nombreCompleto || `@${autor.nombreUsuario}`;
+}
+
+/**
+ * true si el usuario de la sesión puede eliminar el comentario.
+ * El backend lo permite para el autor del comentario o un administrador.
+ */
+export function esAutorComentario(
+  comentario: Comentario,
+  idUsuario: string | null | undefined,
+  esAdministrador = false,
+): boolean {
+  if (esAdministrador) {
+    return true;
+  }
+  const autor = autorComentarioDe(comentario);
+  return !!idUsuario && !!autor && autor.id === idUsuario;
+}
+
+/**
+ * true si el comentario ya fue editado alguna vez.
+ * Se miran las dos marcas: el backend manda `editado` y, por si llega una
+ * respuesta vieja, la fecha de edición también alcanza.
+ */
+export function estaEditado(comentario: Comentario): boolean {
+  return comentario.editado === true || !!comentario.fechaEdicion;
+}
+
+/**
+ * true si el usuario de la sesión puede editar el comentario.
+ * Más restrictivo que borrar: sólo el autor (el administrador modera, pero no
+ * reescribe textos ajenos). Refleja la regla del backend.
+ */
+export function puedeEditarComentario(
+  comentario: Comentario,
+  idUsuario: string | null | undefined,
+): boolean {
+  const autor = autorComentarioDe(comentario);
+  return !!idUsuario && !!autor && autor.id === idUsuario;
+}
+

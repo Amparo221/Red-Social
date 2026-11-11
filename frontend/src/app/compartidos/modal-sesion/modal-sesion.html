@@ -1,0 +1,30 @@
+<!-- Sprint 4: aviso de sesión por vencer. Se muestra sólo cuando el reloj
+     entra en la ventana de aviso que manda el backend. -->
+@if (timer.avisando()) {
+  <div class="modal-sesion__fondo">
+    <div class="modal-sesion" role="dialog" aria-modal="true" aria-labelledby="titulo-sesion">
+      <h2 class="modal-sesion__titulo" id="titulo-sesion">Tu sesión está por vencer</h2>
+
+      <p>
+        Por seguridad la sesión se cierra sola en
+        <strong class="modal-sesion__cuenta">{{ cuenta() }}</strong>. Si querés seguir
+        navegando, extendela y no tenés que volver a iniciar sesión.
+      </p>
+
+      <div class="modal-sesion__acciones">
+        <button class="boton boton--secundario" type="button" (click)="timer.salir()">
+          Cerrar sesión
+        </button>
+        <button
+          #botonExtender
+          class="boton boton--primario"
+          type="button"
+          [disabled]="timer.extendiendoSesion()"
+          (click)="timer.extender()"
+        >
+          {{ timer.extendiendoSesion() ? 'Extendiendo…' : 'Extender sesión' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

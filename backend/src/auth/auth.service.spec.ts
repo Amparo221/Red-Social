@@ -41,19 +41,24 @@ describe('AuthService', () => {
   let usuarioModel: {
     exists: jest.Mock;
     findOne: jest.Mock;
+    findById: jest.Mock;
     create: jest.Mock;
   };
   let cloudinaryService: { uploadImage: jest.Mock };
   let jwtService: { sign: jest.Mock };
+  /** Simula el .env del backend: cada test agrega o pisa las variables que usa. */
+  let variablesDeEntorno: Record<string, string | undefined>;
 
   const darResultadoDeFindOne = (usuario: unknown) => ({
     select: jest.fn().mockResolvedValue(usuario),
   });
 
   beforeEach(async () => {
+    variablesDeEntorno = { DEFAULT_AVATAR_URL: AVATAR_POR_DEFECTO };
     usuarioModel = {
       exists: jest.fn().mockResolvedValue(null),
       findOne: jest.fn(),
+      findById: jest.fn(),
       create: jest.fn((datos: Record<string, unknown>) =>
         Promise.resolve(documentoGuardado(datos)),
       ),
@@ -73,9 +78,8 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((clave: string) =>
-              clave === 'DEFAULT_AVATAR_URL' ? AVATAR_POR_DEFECTO : undefined,
-            ),
+            // Simula el .env: cada test puede cambiarlo antes de llamar.
+            get: jest.fn((clave: string) => variablesDeEntorno[clave]),
           },
         },
       ],
@@ -299,6 +303,124 @@ describe('AuthService', () => {
       await expect(
         service.login('anamoreno', 'OtraClave1'),
       ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
+  describe('autorizar', () => {
+    const darUsuarioPorId = (usuario: unknown) => ({
+      exec: jest.fn().mockResolvedValue(usuario),
+    });
+
+    it('devuelve el usuario del token sin la contraseña', async () => {
+      usuarioModel.findById.mockReturnValue(
+        darUsuarioPorId(
+          documentoGuardado({ ...registroValido, password: 'hash' }),
+        ),
+      );
+
+      const resultado = await service.autorizar('507f1f77bcf86cd799439011');
+
+      expect(usuarioModel.findById).toHaveBeenCalledWith(
+        '507f1f77bcf86cd799439011',
+      );
+      expect(resultado).toMatchObject({
+        id: '507f1f77bcf86cd799439011',
+        nombreUsuario: 'anamoreno',
+        correo: 'ana@correo.com',
+      });
+      expect(resultado).not.toHaveProperty('password');
+    });
+
+    it('no firma un token nuevo (sólo valida la sesión guardada)', async () => {
+      usuarioModel.findById.mockReturnValue(
+        darUsuarioPorId(documentoGuardado({ ...registroValido })),
+      );
+
+      const resultado = await service.autorizar('507f1f77bcf86cd799439011');
+
+      expect(resultado).not.toHaveProperty('token');
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('lanza 401 si el usuario del token ya no existe', async () => {
+      usuarioModel.findById.mockReturnValue(darUsuarioPorId(null));
+
+      await expect(
+        service.autorizar('507f1f77bcf86cd799439011'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
+  describe('refrescar', () => {
+    const darUsuarioPorId = (usuario: unknown) => ({
+      exec: jest.fn().mockResolvedValue(usuario),
+    });
+
+    it('firma un token nuevo con los datos del usuario vigente', async () => {
+      usuarioModel.findById.mockReturnValue(
+        darUsuarioPorId(
+          documentoGuardado({ ...registroValido, perfil: 'administrador' }),
+        ),
+      );
+
+      const resultado = await service.refrescar('507f1f77bcf86cd799439011');
+
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        sub: '507f1f77bcf86cd799439011',
+        nombreUsuario: 'anamoreno',
+        perfil: 'administrador',
+      });
+      expect(resultado.token).toBe(TOKEN);
+      expect(resultado).not.toHaveProperty('password');
+    });
+
+    it('lanza 401 si el usuario del token ya no existe', async () => {
+      usuarioModel.findById.mockReturnValue(darUsuarioPorId(null));
+
+      await expect(
+        service.refrescar('507f1f77bcf86cd799439011'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('politicaSesion', () => {
+    it('lee la duración y el aviso del .env', () => {
+      variablesDeEntorno.JWT_EXPIRES_IN = '60';
+      variablesDeEntorno.SESION_AVISO_SEGUNDOS = '20';
+
+      expect(service.politicaSesion()).toEqual({
+        expiracionSegundos: 60,
+        avisoSegundos: 20,
+      });
+    });
+
+    it('usa 15 minutos de sesión y 5 de aviso si faltan las variables', () => {
+      expect(service.politicaSesion()).toEqual({
+        expiracionSegundos: 900,
+        avisoSegundos: 300,
+      });
+    });
+
+    it('ignora valores inválidos (cero, texto vacío o basura)', () => {
+      variablesDeEntorno.JWT_EXPIRES_IN = '0';
+      variablesDeEntorno.SESION_AVISO_SEGUNDOS = 'cinco minutos';
+
+      expect(service.politicaSesion()).toEqual({
+        expiracionSegundos: 900,
+        avisoSegundos: 300,
+      });
+    });
+
+    it('recorta el aviso para que no tape la sesión entera', () => {
+      variablesDeEntorno.JWT_EXPIRES_IN = '60';
+      variablesDeEntorno.SESION_AVISO_SEGUNDOS = '600';
+
+      // 60 s de sesión: el aviso no puede durar más de la mitad.
+      expect(service.politicaSesion()).toEqual({
+        expiracionSegundos: 60,
+        avisoSegundos: 30,
+      });
     });
   });
 });

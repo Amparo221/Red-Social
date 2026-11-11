@@ -1,8 +1,15 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, catchError, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { Credenciales, NuevoUsuario, Sesion } from '../models/usuario.model';
+import {
+  POLITICA_SESION_POR_DEFECTO,
+  type Credenciales,
+  type NuevoUsuario,
+  type PoliticaSesion,
+  type Sesion,
+  type Usuario,
+} from '../models/usuario.model';
 
 /** Clave con la que se guarda la sesión (usuario + token) en el navegador. */
 export const CLAVE_SESION = 'identibird.sesion';
@@ -22,6 +29,9 @@ export class AuthService {
 
   /** Token que el authInterceptor pega en cada request al backend. */
   readonly tokenActual = computed(() => this.sesion()?.token ?? null);
+
+  /** Política de sesión ya pedida al backend (se cachea: no cambia en caliente). */
+  private politicaCache: PoliticaSesion | null = null;
 
   /**
    * POST /auth/registro
@@ -61,6 +71,62 @@ export class AuthService {
 
     return this.http
       .post<Sesion>(`${URL_AUTH}/login`, cuerpo)
+      .pipe(tap((sesion) => this.guardarSesion(sesion)));
+  }
+
+  /**
+   * GET /auth/autorizar
+   *
+   * La usa el splash de arranque: el `JwtAuthGuard` del backend valida firma y
+   * vencimiento del token guardado y devuelve el usuario fresco. Si el token
+   * venció responde 401 y el `authInterceptor` cierra la sesión y manda al
+   * login, así que acá no hace falta repetir ese manejo.
+   *
+   * No renueva el token: confirma que la sesión guardada sigue sirviendo.
+   */
+  validarSesion(): Observable<Usuario> {
+    return this.http.get<Usuario>(`${URL_AUTH}/autorizar`).pipe(
+      tap((usuario) => {
+        // Refresca los datos del header (por ejemplo, un avatar nuevo) sin
+        // tocar el token: el JWT sigue siendo el mismo.
+        const token = this.sesion()?.token;
+        if (token) {
+          this.guardarSesion({ ...usuario, token });
+        }
+      }),
+    );
+  }
+
+  /**
+   * GET /auth/sesion (público)
+   *
+   * Tiempos de la sesión según el `.env` del backend. Se cachea porque no
+   * cambia durante la vida de la app: el cronómetro sólo necesita saber
+   * cuántos segundos antes del vencimiento mostrar el aviso.
+   */
+  politicaSesion(): Observable<PoliticaSesion> {
+    if (this.politicaCache) {
+      return of(this.politicaCache);
+    }
+
+    return this.http.get<PoliticaSesion>(`${URL_AUTH}/sesion`).pipe(
+      // Sin backend (o versión vieja) el aviso sigue existiendo, con los
+      // mismos valores por defecto del servidor.
+      catchError(() => of(POLITICA_SESION_POR_DEFECTO)),
+      tap((politica) => (this.politicaCache = politica)),
+    );
+  }
+
+  /**
+   * POST /auth/refrescar
+   *
+   * Renueva el token sin pedir la contraseña: el guard valida el token vigente
+   * y devuelve uno nuevo con la misma duración. Lo llama el botón "Extender
+   * sesión" del aviso, y la sesión guardada se reemplaza sola.
+   */
+  refrescar(): Observable<Sesion> {
+    return this.http
+      .post<Sesion>(`${URL_AUTH}/refrescar`, {})
       .pipe(tap((sesion) => this.guardarSesion(sesion)));
   }
 

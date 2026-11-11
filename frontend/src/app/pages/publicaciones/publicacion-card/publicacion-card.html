@@ -1,4 +1,6 @@
-<article class="publicacion">
+<!-- Toda la superficie abre el detalle; el like y el borrar quedan afuera
+     porque son <button> y el handler los ignora. -->
+<article class="publicacion" (click)="alClickear($event)">
   <header class="publicacion__cabecera">
     <img class="avatar avatar--chico" [src]="avatar()" [alt]="'Foto de perfil de ' + nombre()" />
 
@@ -49,7 +51,11 @@
     }
   </header>
 
-  <h2 class="publicacion__titulo">{{ publicacion().titulo }}</h2>
+  <a
+    class="publicacion__titulo-link"
+    [routerLink]="['/publicaciones', publicacion().id]"
+    >{{ publicacion().titulo }}</a
+  >
   <p class="publicacion__texto">{{ publicacion().descripcion }}</p>
 
   @if (publicacion().nombreComun || publicacion().nombreCientifico) {
@@ -87,4 +93,8 @@
       <span class="me-gusta__contador">{{ publicacion().cantidadLikes }}</span>
     </button>
   </footer>
+
+  <!-- Sprint 4: hueco para contenido extra (en el perfil, los comentarios).
+       El click no se propaga: tocar un comentario no debe abrir el detalle. -->
+  <div class="publicacion__extra" (click)="$event.stopPropagation()"><ng-content /></div>
 </article>

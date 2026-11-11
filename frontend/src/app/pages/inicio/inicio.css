@@ -49,7 +49,29 @@
   }
 }
 
-.acciones {
-  display: flex;
-  justify-content: flex-end;
+/* La sección no es una tarjeta propia: sin borde, sombra ni margen, para no
+   anidar una caja dentro de la tarjeta del perfil. Las publicaciones que van
+   adentro conservan su tarjeta blanca. */
+.mis-publicaciones h2 {
+  margin-bottom: 1rem;
+}
+
+.mis-publicaciones__estado,
+.mis-publicaciones__vacio {
+  margin: 1rem 0;
+  color: var(--texto-suave);
+}
+
+.mis-publicaciones__vacio {
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+/* Cada publicación del perfil con su lista de comentarios (Sprint 4). */
+.mis-publicaciones__item {
+  margin-bottom: 1.5rem;
+}
+
+.mis-publicaciones__item:last-child {
+  margin-bottom: 0;
 }

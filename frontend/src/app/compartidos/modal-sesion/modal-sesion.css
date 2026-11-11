@@ -1,0 +1,47 @@
+/* Velo: tapa la app para que la decisión no se pase por alto y para que no se
+   pueda seguir interactuando con lo de atrás. */
+.modal-sesion__fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(3, 27, 45, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.modal-sesion {
+  width: 100%;
+  max-width: 26rem;
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--blanco);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(3, 27, 45, 0.28);
+}
+
+.modal-sesion__titulo {
+  margin: 0 0 0.6rem;
+  font-size: 1.2rem;
+  color: var(--marino-900);
+}
+
+.modal-sesion p {
+  margin: 0 0 1.25rem;
+  color: var(--texto-suave);
+  line-height: 1.5;
+}
+
+/* Números de ancho fijo: la cuenta no baila mientras baja. */
+.modal-sesion__cuenta {
+  color: var(--verde-700);
+  font-variant-numeric: tabular-nums;
+}
+
+.modal-sesion__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}

@@ -6,7 +6,7 @@ import { environment } from '../../../environments/environment';
 import { AuthService } from '../services/auth.service';
 
 /** Rutas públicas de auth: no llevan token (ni deben cerrar la sesión con un 401). */
-const RUTAS_SIN_TOKEN = ['/auth/login', '/auth/registro'];
+const RUTAS_SIN_TOKEN = ['/auth/login', '/auth/registro', '/auth/sesion'];
 
 /**
  * Interceptor funcional (Angular 17+):

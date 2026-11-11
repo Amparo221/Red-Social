@@ -85,6 +85,7 @@ Archivo `.env` en la raíz del backend (**no se sube al repositorio**, está en 
 | `DEFAULT_AVATAR_URL` | `https://res.cloudinary.com/.../default.jpg` | Imagen que se guarda cuando el usuario se registra sin foto |
 | `JWT_SECRET` | `9f2c...` (96 hex) | Secret con el que se **firman** los tokens. Debe ser largo, aleatorio y el mismo en todos los entornos: si cambia, todos los tokens emitidos dejan de valer. Se genera con `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `JWT_EXPIRES_IN` | `900` | Vencimiento del token **en segundos** (900 = 15 minutos). Si se omite se usa ese mismo valor |
+| `SESION_AVISO_SEGUNDOS` | `300` | Cuántos segundos **antes** del vencimiento el front muestra el aviso de sesión por vencer (300 = 5 minutos). Si se omite se usa ese mismo valor. Se expone en `GET /api/auth/sesion` |
 
 ### En Vercel
 
@@ -159,14 +160,22 @@ backend/
 │   │   └── salud.controller.spec.ts
 │   └── publicaciones/
 │       ├── publicaciones.module.ts
-│       ├── publicaciones.controller.ts   # rutas HTTP del feed
-│       ├── publicaciones.service.ts      # lógica: alta, feed, likes, baja lógica
+│       ├── publicaciones.controller.ts   # rutas HTTP del feed y del detalle
+│       ├── publicaciones.service.ts      # lógica: alta, feed, detalle, likes, baja lógica
 │       ├── publicaciones.service.spec.ts
 │       ├── schemas/publicacion.schema.ts
 │       ├── dto/
 │       │   ├── create-publicacion.dto.ts
 │       │   └── listar-publicaciones.dto.ts
 │       └── utils/publicacion-response.util.ts  # forma pública + autor populado
+│   └── comentarios/                  # Sprint #3
+│       ├── comentario.module.ts      # registra Comentario + Publicacion (para validar el id)
+│       ├── comentario.controller.ts  # GET/POST en /publicaciones y DELETE en /comentarios
+│       ├── comentario.service.ts     # listar, crear y baja lógica
+│       ├── comentario.service.spec.ts
+│       ├── schemas/comentario.schema.ts
+│       ├── dto/crear-comentario.dto.ts
+│       └── utils/comentario-response.util.ts  # forma pública + autor populado
 └── test/
     ├── auth.e2e-spec.ts          # pruebas de la capa HTTP (AuthService mockeado, sin DB)
     └── publicaciones.e2e-spec.ts # idem para el feed (guard y servicio mockeados)
@@ -181,6 +190,8 @@ backend/
 | `AuthModule` | Rutas de registro/login. Importa `UsuariosModule` (modelo) y `CloudinaryModule` (imágenes) |
 | `CloudinaryModule` | Provee `CloudinaryService` (subida de archivos a `red-social/perfiles` y `red-social/publicaciones`) |
 | `PublicacionesModule` | Modelo `Publicacion` + rutas del feed. Importa `AuthModule` (para el `JwtAuthGuard`) y `CloudinaryModule` |
+| `ComentarioModule` | Modelo `Comentario` + rutas de comentarios. Registra también `Publicacion` para verificar que exista antes de listar o crear |
+
 
 ---
 
@@ -590,7 +601,8 @@ Diagnóstico del deploy. **No requiere token** (sirve justamente cuando el login
     "API_SECRET": true,
     "DEFAULT_AVATAR_URL": true,
     "JWT_SECRET": true,
-    "JWT_EXPIRES_IN": true
+    "JWT_EXPIRES_IN": true,
+    "SESION_AVISO_SEGUNDOS": true
   },
   "plataforma": "vercel",
   "uptimeEnSegundos": 12,
@@ -654,6 +666,46 @@ El campo **`token`** (JWT) se agregó en el Sprint #2: se manda en las rutas del
 
 `identificador` acepta el **nombre de usuario** o el **correo**.
 Respuesta **200**: el mismo objeto público del registro (sin `password`, con `token`).
+
+### `GET /api/auth/autorizar`
+
+Valida el token guardado en el navegador. La usa el **splash** del front al arrancar: con **200** entra
+al feed y con **401** borra la sesión y vuelve al login. Requiere `Authorization: Bearer <token>` y
+devuelve el usuario público, **sin** `token`: valida la sesión, no la renueva.
+
+### `GET /api/auth/sesion`
+
+**No requiere token.** Devuelve los tiempos de la sesión, calculados desde el `.env`, para que el
+frontend no los hardcodee:
+
+```json
+{ "expiracionSegundos": 900, "avisoSegundos": 300 }
+```
+
+- `expiracionSegundos` es exactamente el `expiresIn` con el que se firman los JWT (`JWT_EXPIRES_IN`).
+- `avisoSegundos` sale de `SESION_AVISO_SEGUNDOS` y **nunca supera la mitad** de la sesión: si alguien
+  configura 600 sobre una sesión de 60 s, se recorta a 30 s para que el aviso no tape toda la sesión.
+- Los dos valores se leen al arrancar: **cambiar el `.env` requiere reiniciar el backend**.
+
+### `POST /api/auth/refrescar`
+
+Requiere `Authorization: Bearer <token>` (todavía vigente). Firma un token nuevo para el mismo usuario
+sin pedir la contraseña y responde **200** con el mismo contrato del login (`{ ...usuario, token }`).
+
+Es lo que llama el botón **Extender sesión** del aviso. Errores: **401** si falta el header, si el token
+venció o si el usuario ya no existe. No hay *refresh token* aparte: el token anterior sigue siendo
+válido hasta su `exp`, el navegador simplemente reemplaza el guardado por el nuevo.
+
+#### Probar el aviso de sesión en Postman
+
+1. En `backend/.env` bajá los tiempos: `JWT_EXPIRES_IN=60` y `SESION_AVISO_SEGUNDOS=20`.
+2. Reiniciá el backend (`npm run start:dev`): el `.env` se lee al arrancar.
+3. `POST /api/auth/login` → copiá el `token` de la respuesta.
+4. Recargá el front: pasados ~40 s aparece el modal con la cuenta regresiva.
+5. **Extender sesión** → el front hace `POST /api/auth/refrescar` con
+   `Authorization: Bearer <token>` (en Postman: pestaña *Authorization* → *Bearer Token*). La respuesta
+   trae el token nuevo y la cuenta vuelve a 1:00.
+6. Si no se extiende, al llegar a 0 el front cierra la sesión y navega a `/login?sesion=expirada`.
 
 ### Rutas de publicaciones (todas requieren `Authorization: Bearer <token>`)
 
@@ -719,6 +771,15 @@ Respuesta **200**:
 }
 ```
 
+#### `GET /api/publicaciones/:id`
+
+Detalle de **una** publicación (Sprint #3). Devuelve el mismo objeto que el feed,
+con el autor populado y `likeado` calculado para quien consulta.
+
+- **200** con la publicación.
+- **404** si no existe o fue eliminada.
+- **400** si el `:id` no es un ObjectId válido.
+
 #### `POST /api/publicaciones/:id/like` → **201**
 
 ```json
@@ -740,6 +801,57 @@ Baja **lógica**; sólo el autor o un administrador (**403** si no). Devuelve:
 ```
 
 Después de la baja, la publicación **no aparece** en `GET /api/publicaciones`.
+
+### Rutas de comentarios (todas requieren `Authorization: Bearer <token>`)
+
+El esquema `Comentario` guarda `texto`, la referencia `autor`, la referencia
+`publicacion` y `eliminado` (baja lógica, igual que las publicaciones).
+
+#### `GET /api/publicaciones/:publicacionId/comentarios`
+
+Devuelve **200** con un array (vacío si no hay) ordenado del más viejo al más
+nuevo. **404** si la publicación no existe o fue eliminada.
+
+```json
+[
+  {
+    "id": "6721a4f0c1d2e3f4a5b6c7e1",
+    "texto": "Qué lindo registro",
+    "autor": {
+      "id": "6712f3c9a8b4d5e6f7a8b9c0",
+      "nombre": "Ana",
+      "apellido": "Moreno",
+      "nombreUsuario": "anamoreno",
+      "imagenPerfilUrl": "https://res.cloudinary.com/.../perfiles/ana.jpg"
+    },
+    "eliminado": false,
+    "createdAt": "2026-11-02T12:10:00.000Z",
+    "updatedAt": "2026-11-02T12:10:00.000Z"
+  }
+]
+```
+
+#### `POST /api/publicaciones/:publicacionId/comentarios` → **201**
+
+| Campo | Tipo | ¿Obligatorio? | Reglas |
+|---|---|---|---|
+| `texto` | texto | sí | se recorta (`trim`), 1 a **500** caracteres |
+
+El **autor sale del token**. **404** si la publicación no existe; **400** si el
+texto viene vacío o supera los 500 caracteres.
+
+#### `DELETE /api/comentarios/:comentarioId` → **200**
+
+Baja lógica. Sólo el autor del comentario o un administrador (**403** si no);
+**404** si el comentario no existe o ya estaba eliminado.
+
+```json
+{ "id": "6721a4f0c1d2e3f4a5b6c7e1", "eliminado": true }
+```
+
+> El `DELETE` cuelga de `/comentarios` y no de `/publicaciones` para que quede
+> simétrico con el `POST`: por eso vive en un segundo controller
+> (`ComentariosController`) con su propia ruta base.
 
 ---
 
@@ -940,6 +1052,45 @@ curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authoriz
 **16. En Atlas:** la colección `publicaciones` guarda `usuario` y `likes` como `ObjectId`, y
 `eliminado` pasa a `true` (el documento **no** se borra).
 
+**17. Detalle de una publicación → 200 / 404 / 400**
+
+```powershell
+curl.exe -s "http://localhost:3000/api/publicaciones/$ID" -H "Authorization: Bearer $TOKEN"
+# mismo cuerpo que una entrada del feed
+
+curl.exe -s -o NUL -w "%{http_code}" "http://localhost:3000/api/publicaciones/000000000000000000000000" -H "Authorization: Bearer $TOKEN"
+# 404 (no existe o fue eliminada)
+
+curl.exe -s -o NUL -w "%{http_code}" "http://localhost:3000/api/publicaciones/no-es-un-id" -H "Authorization: Bearer $TOKEN"
+# 400
+```
+
+**18. Comentarios: crear, listar y borrar**
+
+```powershell
+$PUB = "<id-de-la-publicacion>"
+
+# crear → 201 (el autor sale del token)
+curl.exe -s -X POST "http://localhost:3000/api/publicaciones/$PUB/comentarios" `
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" `
+  -d '{"texto":"  Qué lindo registro  "}'
+# el texto se guarda recortado: "Qué lindo registro"
+
+# listar → 200 (del más viejo al más nuevo)
+curl.exe -s "http://localhost:3000/api/publicaciones/$PUB/comentarios" -H "Authorization: Bearer $TOKEN"
+
+# texto vacío → 400; publicación inexistente → 404
+curl.exe -s -o NUL -w "%{http_code}" -X POST "http://localhost:3000/api/publicaciones/$PUB/comentarios" `
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"texto":"   "}'
+
+# borrar: con el token de otro usuario → 403; con el del autor (o un admin) → 200
+curl.exe -s -X DELETE "http://localhost:3000/api/comentarios/<id-del-comentario>" -H "Authorization: Bearer $TOKEN"
+# { "id": "...", "eliminado": true }
+```
+
+**19. En Atlas:** la colección `comentarios` guarda `autor` y `publicacion` como `ObjectId` y, al
+borrar, `eliminado` pasa a `true` con `fechaEliminacion` (el documento no se borra).
+
 **Si el login devuelve 401 con datos que parecen correctos**
 
 1. Confirmá en Atlas (`redsocial` → `usuarios`) que el documento existe y mirá el valor **exacto** de
@@ -960,15 +1111,28 @@ curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authoriz
 - **Sprint #3 — Frontend (Angular):** CORS habilitado, respuestas con `id` (no `_id`) y un contrato ya
   definido para el feed (`total`, `hayMas`, `likeado`), así el front puede tipar
   `Publicacion { id: string; ... }` y armar el scroll infinito sin adaptar nada.
-- **Sprint #3 — Comentarios (backend):** `PublicacionesModule` **exporta** `PublicacionesService`, así
-  que el módulo de comentarios puede inyectarlo y verificar que la publicación exista y no esté dada
-  de baja antes de crear un comentario.
+- **Sprint #3 — Comentarios:** implementados (`GET`/`POST /publicaciones/:id/comentarios` y
+  `DELETE /comentarios/:id`). Falta sólo que el front cambie los tres métodos *stub* de
+  `PublicacionesService` por las llamadas HTTP reales.
 - **Sprint #4 — JWT completo:** el token ya está implementado (`JwtModule`, `JwtAuthGuard`,
-  `@UsuarioActual()`), payload `{ sub, nombreUsuario, perfil }` y vencimiento configurable. Queda para
-  el #4 lo que no pide este sprint: *refresh tokens*, revocación, y aplicar el guard a las rutas de
-  usuarios (`GET/PATCH /usuarios/:id`), que hoy siguen abiertas.
+  `@UsuarioActual()`), payload `{ sub, nombreUsuario, perfil }` y vencimiento configurable. En el #4 se
+  sumó el **refresco** (`POST /auth/refrescar`, sin pedir la contraseña) y `GET /auth/sesion` con los
+  tiempos del aviso. Queda pendiente: revocación de tokens y aplicar el guard a las rutas de usuarios
+  (`GET/PATCH /usuarios/:id`), que hoy siguen abiertas.
 - **Roles:** `JwtAuthGuard` ya expone `perfil`, y la baja de publicaciones acepta `administrador`. Un
   `RolesGuard` con `@Roles('administrador')` sería el paso siguiente para administrar usuarios.
+
+---
+
+## Estado del Sprint #4
+
+- [x] `GET /api/auth/autorizar` alimenta el splash del front (valida el token guardado).
+- [x] `GET /api/auth/sesion` (público) expone `expiracionSegundos` y `avisoSegundos` desde el `.env`.
+- [x] `POST /api/auth/refrescar` renueva el JWT sin pedir la contraseña otra vez.
+- [x] `auth/utils/sesion-config.util.ts` como única fuente de los tiempos: lo usan el `JwtModule` y el endpoint.
+- [x] `SESION_AVISO_SEGUNDOS` documentada y reportada por `GET /api/salud` (sólo `true`/`false`).
+- [x] Tests: `refrescar` (token nuevo / 401), `politicaSesion` (env, defaults y recorte del aviso) y
+      `autorizar` (no firma token).
 
 ---
 
@@ -1002,6 +1166,12 @@ curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authoriz
 | D24 | **Filtro global** de excepciones (`AllExceptionsFilter`) | Todo error sale en JSON con `message` (y `detalle` en los 5xx): un 500 sin cuerpo deja al front sin nada que mostrar. El stack queda en el log |
 | D25 | `GET /api/salud` **público** con `mongoose.connection.readyState` y variables cargadas (`true`/`false`) | Permite diagnosticar un deploy roto desde el navegador, sin exponer credenciales ni depender de los logs |
 | D26 | `serverSelectionTimeoutMS: 5000` + `retryAttempts: 2` | En serverless conviene fallar rápido y con un log claro antes que agotar el tiempo de la función |
+| D27 | El detalle reutiliza `toPublicacionResponse` (`GET /publicaciones/:id`) | El contrato del detalle es **idéntico** al del feed: el front reusa el modelo y los helpers de autor/fecha |
+| D28 | `Comentario` en su **propio módulo** (`ComentarioModule`), no dentro de `PublicacionesModule` | Cada recurso mantiene su esquema, DTO, servicio y controller; el módulo registra el modelo `Publicacion` sólo para validar que exista |
+| D29 | `DELETE /comentarios/:id` en un controller aparte (`ComentariosController`) | Nest usa una ruta base por clase; separarlo deja el borrado simétrico con el `POST` y sin rutas anidadas raras |
+| D30 | Listar comentarios exige que la publicación exista y no esté eliminada | Un 404 explica el problema mejor que un array vacío cuando el detalle se abrió desde un link viejo |
+| D31 | `texto` con `trim` en el DTO **y** en el esquema, máx. **500** | El front limita el textarea a 500 y el backend no confía en el front: un request manual no puede guardar `"   "` |
+| D32 | Tests de `ComentarioService` con modelos mockeados (sin Atlas) | Los 9 casos (listar/crear/eliminar, 403/404/500) corren siempre, igual que los del feed |
 
 ---
 
@@ -1035,4 +1205,19 @@ curl.exe -s -X DELETE "http://localhost:3000/api/publicaciones/$ID" -H "Authoriz
 - [x] Lint (`npm run lint`) y build (`npm run build`) sin errores
 - [x] Chequeo de tipos de todo el proyecto, specs incluidos (`npm run typecheck`)
 - [x] Filtro global de excepciones (`AllExceptionsFilter`) + `GET /api/salud` para diagnosticar el deploy
-- [ ] Comentarios → Sprint #3 (backend)
+- [x] Comentarios → implementados en el **Sprint #3** (ver el estado de ese sprint más abajo)
+
+## Estado del Sprint #3
+
+- [x] `GET /api/publicaciones/:id` (detalle) reutilizando el contrato del feed
+- [x] Esquema `Comentario` con autor y publicación referenciados, baja lógica e índices
+- [x] `GET /api/publicaciones/:publicacionId/comentarios` (404 si la publicación no existe)
+- [x] `POST /api/publicaciones/:publicacionId/comentarios` con `texto` validado (1–500)
+- [x] `DELETE /api/comentarios/:comentarioId` (autor o administrador, 403 / 404)
+- [x] `ComentarioModule` registrado en `AppModule` (esquema + rutas)
+- [x] Tests de `ComentarioService` (9 casos) además de los del feed
+- [x] Lint (`npm run lint`), build (`npm run build`) y typecheck (`npm run typecheck`) sin errores
+- [x] Los comentarios se ven en el front: el detalle los lista (avatar, nombre,
+      `@usuario` y fecha relativa), permite comentar (máx. 500, con contador) y
+      borrar los propios o cualquiera si sos administrador. Los tres métodos de
+      `PublicacionesService` llaman a estas rutas (ya no están *stubbeados*).

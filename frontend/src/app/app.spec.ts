@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { environment } from '../environments/environment';
 import { App } from './app';
 import { CLAVE_SESION } from './core/services/auth.service';
 
@@ -28,6 +29,8 @@ describe('App', () => {
   });
 
   afterEach(() => {
+    // Los tests del splash usan relojes falsos: siempre se vuelve al real.
+    vi.useRealTimers();
     localStorage.clear();
   });
 
@@ -70,5 +73,47 @@ describe('App', () => {
     expect(destinos).toContain('/inicio');
     // La marca y el link del menú llevan al feed: es la pantalla principal.
     expect(destinos.filter((destino) => destino === '/publicaciones')).toHaveLength(2);
+  });
+
+  it('con sesión muestra el splash hasta validar el token y cumplir el mínimo', () => {
+    vi.useFakeTimers();
+    localStorage.setItem(CLAVE_SESION, JSON.stringify(SESION_GUARDADA));
+    const http = TestBed.inject(HttpTestingController);
+
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const compilado = fixture.nativeElement as HTMLElement;
+    expect(compilado.querySelector('.splash')).not.toBeNull();
+    expect(compilado.textContent).toContain('Cargando tu sesión');
+    // La pluma de public/ es el spinner; el logo de la app ya no va en el splash.
+    const pluma = compilado.querySelector<HTMLImageElement>('.splash__spinner');
+    expect(pluma?.getAttribute('src')).toBe('feather.png');
+    expect(compilado.querySelector('.splash__icono')).toBeNull();
+
+    // El splash valida la sesión guardada contra GET /auth/autorizar...
+    const validacion = http.expectOne(`${environment.apiUrl}/auth/autorizar`);
+    expect(validacion.request.method).toBe('GET');
+    validacion.flush(SESION_GUARDADA);
+
+    // ...y sigue visible porque todavía no se cumplieron los 2 s del mínimo.
+    expect(compilado.querySelector('.splash')).not.toBeNull();
+
+    vi.advanceTimersByTime(environment.cargaMinimaMs);
+    fixture.detectChanges();
+
+    expect(compilado.querySelector('.splash')).toBeNull();
+    expect(compilado.textContent).toContain('@anamoreno');
+  });
+
+  it('sin sesión no muestra el splash ni consulta /auth/autorizar', () => {
+    const http = TestBed.inject(HttpTestingController);
+
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const compilado = fixture.nativeElement as HTMLElement;
+    expect(compilado.querySelector('.splash')).toBeNull();
+    http.expectNone((req) => req.url.endsWith('/auth/autorizar'));
   });
 });

@@ -6,9 +6,7 @@ import { AuthController } from './auth.controller';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-
-/** 15 minutos, en segundos (jsonwebtoken también acepta el texto '15m'). */
-const VENCIMIENTO_POR_DEFECTO = 15 * 60;
+import { leerPoliticaSesion } from './utils/sesion-config.util';
 
 @Module({
   imports: [
@@ -20,19 +18,14 @@ const VENCIMIENTO_POR_DEFECTO = 15 * 60;
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const segundos = Number(configService.get<string>('JWT_EXPIRES_IN'));
-
-        return {
-          secret: configService.getOrThrow<string>('JWT_SECRET'),
-          signOptions: {
-            expiresIn:
-              Number.isFinite(segundos) && segundos > 0
-                ? segundos
-                : VENCIMIENTO_POR_DEFECTO,
-          },
-        };
-      },
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.getOrThrow<string>('JWT_SECRET'),
+        signOptions: {
+          // Mismo cálculo que expone GET /auth/sesion y que usa el modal de
+          // aviso del front: una sola fuente (auth/utils/sesion-config.util).
+          expiresIn: leerPoliticaSesion(configService).expiracionSegundos,
+        },
+      }),
     }),
   ],
   controllers: [AuthController],

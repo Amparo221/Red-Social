@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
+import { vi } from 'vitest';
 import { environment } from '../../../environments/environment';
 import type { Publicacion } from '../../core/models/publicacion.model';
 import { CLAVE_SESION } from '../../core/services/auth.service';
@@ -250,5 +251,34 @@ describe('Publicaciones', () => {
     expect(texto(fixture)).not.toContain('Publicación p1');
     expect(texto(fixture)).toContain('Publicación p2');
     expect(texto(fixture)).toContain('Publicación eliminada.');
+  });
+
+  it('abre el detalle al clickear cualquier parte de la tarjeta', async () => {
+    const fixture = await montar([publicacion('p1')]);
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    // El texto de la publicación no es un link: lo resuelve el handler de la tarjeta.
+    ((fixture.nativeElement as HTMLElement).querySelector('.publicacion__texto') as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(navegar).toHaveBeenCalledWith(['/publicaciones', 'p1']);
+  });
+
+  it('el me gusta no abre el detalle', async () => {
+    const fixture = await montar([publicacion('p1', { cantidadLikes: 2 })]);
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const compilado = fixture.nativeElement as HTMLElement;
+
+    (compilado.querySelector('.me-gusta') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(navegar).not.toHaveBeenCalled();
+
+    // El like sí salió: se responde para no dejar el pedido colgado.
+    http
+      .expectOne(`${URL_PUBLICACIONES}/p1/like`)
+      .flush({ id: 'p1', cantidadLikes: 3, likeado: true }, { status: 201, statusText: 'Created' });
+
+    await fixture.whenStable();
   });
 });

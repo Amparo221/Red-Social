@@ -1,3 +1,21 @@
+<!-- Splash de arranque (Sprint 4): tapa la pantalla mientras el backend
+     confirma el token guardado. Sin sesión no se muestra nada de esto. -->
+@if (cargandoInicial()) {
+  <div class="splash" role="status" aria-live="polite">
+    <p class="splash__marca">Identi<span class="splash__acento">Bird</span></p>
+    <!-- La pluma de la marca hace de spinner: `feather.png` sale de public/. -->
+    <img
+      class="splash__spinner"
+      src="feather.png"
+      alt=""
+      width="64"
+      height="64"
+      aria-hidden="true"
+    />
+    <p class="splash__texto">Cargando tu sesión…</p>
+  </div>
+}
+
 <header class="cabecera">
   <div class="contenedor cabecera__contenido">
     <a class="marca" [routerLink]="auth.estaLogueado() ? '/publicaciones' : '/login'">
@@ -38,6 +56,10 @@
   <router-outlet />
 </main>
 
+<!-- Aviso de sesión por vencer: vive en el shell para que se vea en cualquier
+     pantalla y no se pierda al navegar. -->
+<app-modal-sesion />
+
 <footer class="pie">
-  <div class="contenedor"><strong>IdentiBird</strong> · Sprint 2 · Angular + NestJS</div>
+  <div class="contenedor"><strong>IdentiBird</strong> · Sprint 4 · Angular + NestJS</div>
 </footer>

@@ -7,4 +7,7 @@
 export const environment = {
   produccion: true,
   apiUrl: '/api',
+  // En el deploy nadie espera de más: el splash dura sólo lo que tarde la
+  // validación real del token.
+  cargaMinimaMs: 0,
 };

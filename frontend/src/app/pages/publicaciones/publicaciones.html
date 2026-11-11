@@ -59,15 +59,6 @@
       >
         Más gustadas
       </button>
-      <button
-        class="chip"
-        type="button"
-        [class.chip--activo]="soloMias()"
-        [attr.aria-pressed]="soloMias()"
-        (click)="alternarMias()"
-      >
-        Mías
-      </button>
     </div>
   </div>
 
@@ -75,11 +66,7 @@
     <p class="feed__estado" role="status">Cargando publicaciones…</p>
   } @else if (vacio()) {
     <div class="feed__vacio tarjeta">
-      @if (soloMias()) {
-        <p>Todavía no publicaste nada. ¡Contá tu primer avistaje desde el formulario de arriba!</p>
-      } @else {
-        <p>Todavía no hay publicaciones. ¡Compartí el primer avistaje desde el formulario de arriba!</p>
-      }
+      <p>Todavía no hay publicaciones. ¡Compartí el primer avistaje desde el formulario de arriba!</p>
     </div>
   } @else {
     @for (publicacion of publicaciones(); track publicacion.id) {
@@ -90,6 +77,7 @@
         [ocupada]="estaOcupada(publicacion)"
         (meGusta)="alternarLike(publicacion)"
         (eliminar)="alEliminar(publicacion)"
+        (abrir)="abrirDetalle(publicacion)"
       />
     }
 
