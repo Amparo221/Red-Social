@@ -133,25 +133,47 @@ valores viejos:
 Ese error no es una ruta rota: la función **no llega a cargar**. En los *Runtime Logs* aparece
 `Cannot find module '@nestjs/common'` con el stack arrancando en `/var/task/main.js`.
 
-El builder del servicio `backend` compila con `nest build` y **aplana** `backend/dist` en la raíz de
-la función (`/var/task/main.js`, `/var/task/app.module.js`, …), pero las dependencias que rastrea
-`@vercel/nft` conservan la ruta relativa a la raíz del repo (`/var/task/backend/node_modules/...`).
-Con `node_modules` dentro de `backend/`, Node buscaba en `/var/task/node_modules` (que no existía) y
-fallaba el primer `require`.
+Con el builder actual (`@vercel/backends`, zero-config) la función se arma dentro de
+`.vercel/output/services/backend/functions/index.func/`, con `handler: backend/src/main.cjs` y las
+dependencias que rastrea `@vercel/nft` **copiadas dentro de la función** (`backend/node_modules/...`,
+ver `filePathMap`). Como el handler y las dependencias comparten esa raíz, el bundle es autoconsistente
+y el hoisting **ya no hace falta**: por eso `457ce90` sacó `node scripts/hoist-node-modules.js` del
+`services.backend.buildCommand`, que ahora es sólo `npm run build`. El script quedó en
+`backend/scripts/` como referencia histórica, sin uso.
 
-Por eso `vercel.json` → `services.backend.buildCommand` ejecuta, **después** de compilar,
-`node scripts/hoist-node-modules.js`: mueve `node_modules` a la raíz del monorepo y así nft lo
-empaqueta como `node_modules/...` en la raíz de la función. El script sólo actúa en Vercel
-(`if (!process.env.VERCEL)`), así que en local (`cd backend && npm install && npm test`) no cambia nada.
+> **Historia (builder viejo, `@vercel/node`):** `nest build` se aplanaba en `/var/task/main.js` pero las
+> dependencias quedaban en `/var/task/backend/node_modules`, así que Node buscaba en
+> `/var/task/node_modules` y fallaba el primer `require`. El hoist movía `node_modules` a la raíz del
+> monorepo antes del empaquetado. Si algún día vuelve ese layout, el script sigue disponible.
 
 > **Otro síntoma distinto:** si el log dice `ERR_REQUIRE_ESM` (`require() of ES Module … /@nestjs/common/index.js`),
 > el empaquetado está bien pero volvió a entrar **NestJS 12** (que publica sólo ESM) en un proyecto que compila a
 > CommonJS. Ver D29: la salida del proyecto es CommonJS, así que las dependencias de Nest tienen que ser la 11.
 
 Para verificarlo sin desplegar: `vercel build --prod` y revisar
-`.vercel/output/services/backend/functions/index.func/.vc-config.json` — el `handler` es `main.js` y
-**todas** las rutas de dependencias del `filePathMap` tienen que empezar con `node_modules/`
-(si aparece `backend/node_modules/...`, el hoisting no corrió).
+`.vercel/output/services/backend/functions/index.func/.vc-config.json` — el `handler` termina en
+`main.cjs` y **cada** valor del `filePathMap` tiene que ser un archivo que exista **dentro** de la
+carpeta de la función (hoy son `backend/node_modules/...`). Si apunta a una ruta que no está, el bundle
+quedó a medio armar: volver a buildear.
+
+#### Si **todo** responde `404 NOT_FOUND` (incluida la raíz `/`)
+
+Es un deployment **sin rutas**: se publicó un `.vercel/output` vacío o incompleto. No es CORS, ni
+variables de entorno, ni una ruta mal escrita — con cero `routes` el edge responde 404 en todas las URLs
+y la función del backend ni se invoca.
+
+1. Verificar el output local: `.vercel/output/config.json` tiene que traer `routes` con `/api/(.*)` →
+   servicio `backend` y `/(.*)` → servicio `frontend`, además del array `services` con los dos. Si dice
+   sólo `{"version":3}`, el build no generó nada.
+2. `vercel build --prod` tiene que terminar con `Build Completed in .vercel/output` **y código 0**. Si
+   falla, el `.vercel/output` queda con lo que se alcanzó a escribir (a veces sin `static/` ni
+   `services/`) y **nunca** hay que publicarlo: `vercel deploy --prebuilt` sube ese estado tal cual y
+   deja el sitio entero en 404.
+   > **Regla:** si `vercel build` no sale con 0, no se publica. Nada de `--prebuilt` con un build roto.
+3. Después de corregir `vercel.json` hay que **volver a buildear**: el output viejo no se regenera solo,
+   y publicar de nuevo el output anterior reproduce el mismo 404.
+4. Chequeo rápido del deployment publicado: `vercel inspect <url>` o `vercel ls` — un build real tarda
+   decenas de segundos; los de 2–3 s son uploads de un output ya buildeado (o vacío) y no compilaron nada.
 
 #### Si algo responde 500 en el deploy
 

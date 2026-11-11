@@ -15,7 +15,7 @@ import { UsuarioActual } from './decorators/usuario-actual.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { UsuarioAutenticado } from './interfaces/jwt-payload.interface';
+import type { UsuarioAutenticado } from './interfaces/jwt-payload.interface';
 import { OPCIONES_IMAGEN } from '../common/multer/imagen.multer';
 
 @Controller('auth')

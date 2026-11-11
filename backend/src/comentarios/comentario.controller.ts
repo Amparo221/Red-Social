@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { UsuarioActual } from '../auth/decorators/usuario-actual.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UsuarioAutenticado } from '../auth/interfaces/jwt-payload.interface';
+import type { UsuarioAutenticado } from '../auth/interfaces/jwt-payload.interface';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
 import { CrearComentarioDto } from './dto/crear-comentario.dto';
 import { EditarComentarioDto } from './dto/editar-comentario.dto';
