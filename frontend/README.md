@@ -141,9 +141,11 @@ sesión.
 - **`authInterceptor`** (`src/app/core/interceptors/auth.interceptor.ts`) agrega
   `Authorization: Bearer <token>` a toda request que vaya a `environment.apiUrl`,
   salvo las públicas: `/auth/login`, `/auth/registro` y `/auth/sesion`.
-- El JWT dura **15 minutos** (`JWT_EXPIRES_IN=900` en el backend). Cuando una
-  ruta protegida responde `401`, el interceptor cierra la sesión y navega a
-  `/login?sesion=expirada`; el login arranca mostrando esa alerta.
+- El JWT dura lo que indique `JWT_EXPIRES_IN` del backend (por defecto **900 s =
+  15 minutos**). Cambiarlo en el `.env` obliga a reiniciar el backend, y en Vercel
+  a cargar la variable y **volver a desplegar** (ver `../backend/README.md`).
+  Cuando una ruta protegida responde `401`, el interceptor cierra la sesión y
+  navega a `/login?sesion=expirada`; el login arranca mostrando esa alerta.
 - El **splash de arranque** valida el token guardado con `GET /auth/autorizar`, y
   un **cronómetro** derivado del `exp` del JWT avisa antes del vencimiento y
   permite extender la sesión (`POST /auth/refrescar`). Los tiempos los manda el

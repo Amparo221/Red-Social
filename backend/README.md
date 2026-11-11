@@ -1,8 +1,8 @@
-# Red Social — Backend (Sprints #1 y #2)
+# Red Social — Backend (Sprints #1 a #4)
 
 API REST de una red social, desarrollada con **NestJS + MongoDB Atlas + Cloudinary**.
 
-Este repositorio implementa los **Sprints #1 y #2 del backend**:
+Este repositorio implementa los **Sprints #1 a #4 del backend**:
 
 - **Sprint #1 — Usuarios**
   - **Registro de usuarios** (`POST /api/auth/registro`): validación de los datos, foto de perfil
@@ -15,10 +15,20 @@ Este repositorio implementa los **Sprints #1 y #2 del backend**:
     **cantidad de me gusta**, filtro por autor y `populate` del usuario.
   - **Me gusta**: `POST /api/publicaciones/:id/like` y `DELETE /api/publicaciones/:id/like`.
   - **Baja lógica** (`DELETE /api/publicaciones/:id`) sólo para el autor o un administrador.
+- **Sprint #3 — Comentarios**
+  - **Detalle** (`GET /api/publicaciones/:id`) con el mismo contrato que el feed.
+  - **Comentarios** (`GET`/`POST /api/publicaciones/:id/comentarios`), **edición** (`PATCH
+    /api/comentarios/:id`, sólo el autor) y **baja lógica** (`DELETE /api/comentarios/:id`, autor o
+    administrador).
+- **Sprint #4 — Sesión**
+  - **Validación** del token guardado por el front (`GET /api/auth/autorizar`) y **`GET
+    /api/auth/sesion`** con los tiempos de la sesión.
+  - **Refresco** del token sin pedir la contraseña (`POST /api/auth/refrescar`).
 
 > 🔐 **JWT (alcance de este sprint):** los likes y la baja necesitan saber *quién* hace el request, así
 > que el login ya devuelve un `token` y las rutas de publicaciones exigen `Authorization: Bearer ...`.
-> Es el mínimo indispensable; el Sprint #4 del backend completa el resto (refresh, roles, etc.).
+> El Sprint #4 sumó el refresco y la validación de la sesión; los **roles** (un `RolesGuard` real)
+> quedan fuera del alcance.
 
 
 ---
@@ -100,6 +110,23 @@ resolver lo administra la plataforma. La API se publica en `/api/...`: el
 > el deploy falla al arrancar (y el login devolvería 500). Cargalo en *Environment Variables* y volvé
 > a desplegar; si además querés conservar las sesiones abiertas en local y en producción, usá el
 > **mismo** secret en los dos lados.
+
+#### Cambiar `JWT_EXPIRES_IN` / `SESION_AVISO_SEGUNDOS` en el deploy
+
+Los dos valores se leen **cuando arranca** el backend (`sesion-config.util.ts`) y Vercel **no** aplica
+variables nuevas a un deployment existente, así que hasta no volver a desplegar sigue corriendo con los
+valores viejos:
+
+1. *Project → Settings → Environment Variables*: cargar o editar `JWT_EXPIRES_IN` y
+   `SESION_AVISO_SEGUNDOS` en **Production** (y **Preview** si se usan previews). Las comparten los dos
+   `services` del proyecto.
+2. **Volver a desplegar**: `vercel --prod` o *Deployments → ⋯ → Redeploy*.
+3. Verificar: `curl https://<dominio>/api/auth/sesion` tiene que devolver
+   `{"expiracionSegundos":60,"avisoSegundos":20}`. `GET /api/salud` informa en `variablesDeEntorno` si
+   falta alguna (existencia, no valores).
+4. En el navegador: **cerrar sesión y volver a entrar** —el token guardado conserva el `exp` viejo— y
+   recargar con `Ctrl+F5`, porque `politicaSesion()` cachea la respuesta una vez por carga de página.
+5. Para la demo alcanzan `60`/`20`; después conviene volver a `900`/`300` y redeployar otra vez.
 
 #### Si el deploy devuelve `FUNCTION_INVOCATION_FAILED` en **todas** las rutas
 
