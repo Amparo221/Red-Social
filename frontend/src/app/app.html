@@ -57,8 +57,13 @@
 </main>
 
 <!-- Aviso de sesión por vencer: vive en el shell para que se vea en cualquier
-     pantalla y no se pierda al navegar. -->
-<app-modal-sesion />
+     pantalla y no se pierda al navegar. Se monta recién cuando el splash
+     terminó de validar el token guardado: si no, el reloj lee el `exp` del
+     token antes de que el backend confirme la sesión y el modal (z-index 200)
+     aparece encima del splash (z-index 100) en cada F5. -->
+@if (!cargandoInicial()) {
+  <app-modal-sesion />
+}
 
 <footer class="pie">
   <div class="contenedor"><strong>IdentiBird</strong> · Sprint 4 · Angular + NestJS</div>

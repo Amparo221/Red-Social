@@ -167,7 +167,7 @@ devuelve `{ expiracionSegundos, avisoSegundos }` calculados en el backend desde
 | ----- | ------- | -------- |
 | Splash | `app.ts` / `app.html` / `app.css` (`.splash`) | Si hay sesión guardada, tapa la pantalla mientras `GET /auth/autorizar` valida el token. `forkJoin` espera **dos** cosas: la validación y el mínimo de `environment.cargaMinimaMs` (2 s en desarrollo, 0 en producción), y el `finalize` lo apaga incluso si la validación falla. Sin sesión no aparece |
 | Cronómetro | `core/services/sesion-timer.service.ts` | Deriva los segundos restantes del **`exp` del JWT** (`core/utils/jwt.util.ts`) con un `setInterval` de 1 s que se reinicia solo cuando cambia el token, así un F5 o un token renovado no lo desincronizan |
-| Aviso | `compartidos/modal-sesion/` | Modal (`role="dialog"`, foco en el botón principal) que aparece cuando quedan `avisoSegundos` o menos. **Extender sesión** → `POST /auth/refrescar`; **Cerrar sesión** → logout |
+| Aviso | `compartidos/modal-sesion/` | Modal (`role="dialog"`, foco en el botón principal) que aparece cuando quedan `avisoSegundos` o menos. **Extender sesión** → `POST /auth/refrescar`; **Cerrar sesión** → logout. Vive en el shell (`app.html`) pero se monta con `@if (!cargandoInicial())`: el reloj no existe hasta que el splash terminó de validar el token, así el modal (z-index 200) no tapa el splash (z-index 100) ni dispara el aviso por un `exp` que el backend todavía no confirmó |
 | Vencimiento | `sesion-timer.service.ts` | Al llegar a 0 (o si el refresco falla) cierra la sesión y navega a `/login?sesion=expirada`, el mismo destino que usa el 401 |
 
 `AuthService` suma `validarSesion()`, `refrescar()` y `politicaSesion()` (esta
@@ -344,6 +344,11 @@ badge sin romper la vista.
 - [x] Tests nuevos: `jwt.util`, `sesion-timer.service`, `modal-sesion`, el splash
       en `app.spec` y `auth.service` (`validarSesion`, `refrescar`,
       `politicaSesion`).
+- [x] El aviso de sesión no se monta durante el arranque: `app.html` lo envuelve
+      en `@if (!cargandoInicial())`, así el reloj arranca recién con la sesión ya
+      validada y un F5 con token por vencer muestra el splash **sin** el modal
+      encima (`app.spec`: «no muestra el aviso de sesión por encima del splash
+      al arrancar»).
 
 ## Validaciones del formulario de registro
 

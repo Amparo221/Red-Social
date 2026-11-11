@@ -19,6 +19,24 @@ const SESION_GUARDADA = {
   token: 'token-de-prueba',
 };
 
+/** JWT de mentira que vence `segundos` después de AHORA (ver `jwt.util`). */
+const AHORA = new Date('2026-11-11T12:00:00.000Z');
+
+function tokenQueVenceEn(segundos: number): string {
+  const payload = {
+    sub: '64b7f0c2a1b2c3d4e5f60718',
+    nombreUsuario: 'anamoreno',
+    perfil: 'usuario',
+    exp: Math.floor(AHORA.getTime() / 1000) + segundos,
+  };
+  const base64url = btoa(JSON.stringify(payload))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  return `cabecera.${base64url}.firma`;
+}
+
 describe('App', () => {
   beforeEach(async () => {
     localStorage.clear();
@@ -115,5 +133,40 @@ describe('App', () => {
     const compilado = fixture.nativeElement as HTMLElement;
     expect(compilado.querySelector('.splash')).toBeNull();
     http.expectNone((req) => req.url.endsWith('/auth/autorizar'));
+  });
+
+  it('no muestra el aviso de sesión por encima del splash al arrancar', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(AHORA);
+    // Token a punto de vencer: en cuanto el reloj arranque, el aviso aplica.
+    localStorage.setItem(
+      CLAVE_SESION,
+      JSON.stringify({ ...SESION_GUARDADA, token: tokenQueVenceEn(5) }),
+    );
+    const http = TestBed.inject(HttpTestingController);
+
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+
+    const compilado = fixture.nativeElement as HTMLElement;
+    expect(compilado.querySelector('.splash')).not.toBeNull();
+    // El modal (z-index 200) no puede tapar el splash (z-index 100) mientras
+    // el backend todavía no confirmó el token guardado.
+    expect(compilado.querySelector('.modal-sesion')).toBeNull();
+
+    http.expectOne(`${environment.apiUrl}/auth/autorizar`).flush(SESION_GUARDADA);
+    vi.advanceTimersByTime(environment.cargaMinimaMs);
+    fixture.detectChanges();
+    // Segundo CD: recién ahora el reloj corre por primera vez.
+    fixture.detectChanges();
+
+    expect(compilado.querySelector('.splash')).toBeNull();
+    expect(compilado.querySelector('.modal-sesion')).not.toBeNull();
+    expect(compilado.textContent).toContain('Tu sesión está por vencer');
+
+    // La política de sesión se pide cuando arranca el reloj, no antes.
+    http
+      .expectOne(`${environment.apiUrl}/auth/sesion`)
+      .flush({ expiracionSegundos: 300, avisoSegundos: 20 });
   });
 });
