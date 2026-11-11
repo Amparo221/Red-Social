@@ -20,6 +20,11 @@ interface CuerpoDeError {
   statusCode: number;
   message: string | string[];
   error: string;
+  /**
+   * Código corto para casos que el front necesita distinguir sin comparar
+   * textos (por ejemplo `CUENTA_DESHABILITADA` en el 401 del `JwtAuthGuard`).
+   */
+  motivo?: string;
   detalle?: string;
 }
 
@@ -128,6 +133,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message: this.normalizarMensaje(datos['message'], exception.message),
         error:
           typeof datos['error'] === 'string' ? datos['error'] : exception.name,
+        // `motivo` lo agregan los guards para que el front distinga casos que
+        // comparten status (401 por token vencido vs. cuenta deshabilitada).
+        ...(typeof datos['motivo'] === 'string'
+          ? { motivo: datos['motivo'] }
+          : {}),
         ...(typeof datos['detalle'] === 'string'
           ? { detalle: datos['detalle'] }
           : {}),

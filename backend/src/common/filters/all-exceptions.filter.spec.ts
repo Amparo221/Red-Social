@@ -5,6 +5,7 @@ import {
   HttpStatus,
   InternalServerErrorException,
   Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
@@ -93,6 +94,28 @@ describe('AllExceptionsFilter', () => {
       message: 'No se pudo crear el usuario',
       error: 'Internal Server Error',
       detalle: 'bad auth : authentication failed',
+    });
+  });
+
+  it('propaga el motivo de los 401 (cuenta deshabilitada vs. token vencido)', () => {
+    const { host, status, json } = crearContexto();
+
+    filter.catch(
+      new UnauthorizedException({
+        statusCode: 401,
+        message: 'Tu cuenta está deshabilitada.',
+        error: 'Unauthorized',
+        motivo: 'CUENTA_DESHABILITADA',
+      }),
+      host,
+    );
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.UNAUTHORIZED);
+    expect(json).toHaveBeenCalledWith({
+      statusCode: HttpStatus.UNAUTHORIZED,
+      message: 'Tu cuenta está deshabilitada.',
+      error: 'Unauthorized',
+      motivo: 'CUENTA_DESHABILITADA',
     });
   });
 

@@ -20,15 +20,20 @@ Este repositorio implementa los **Sprints #1 a #4 del backend**:
   - **Comentarios** (`GET`/`POST /api/publicaciones/:id/comentarios`), **edición** (`PATCH
     /api/comentarios/:id`, sólo el autor) y **baja lógica** (`DELETE /api/comentarios/:id`, autor o
     administrador).
-- **Sprint #4 — Sesión**
+- **Sprint #4 — Sesión y administración de usuarios**
   - **Validación** del token guardado por el front (`GET /api/auth/autorizar`) y **`GET
     /api/auth/sesion`** con los tiempos de la sesión.
   - **Refresco** del token sin pedir la contraseña (`POST /api/auth/refrescar`).
+  - **Usuarios (sólo administradores):** listado con búsqueda y filtros
+    (`GET /api/usuarios`), alta con perfil a elección (`POST /api/usuarios`) y **baja lógica**
+    (`DELETE /api/usuarios/:id` + `PATCH /api/usuarios/:id/estado`).
 
-> 🔐 **JWT (alcance de este sprint):** los likes y la baja necesitan saber *quién* hace el request, así
-> que el login ya devuelve un `token` y las rutas de publicaciones exigen `Authorization: Bearer ...`.
-> El Sprint #4 sumó el refresco y la validación de la sesión; los **roles** (un `RolesGuard` real)
-> quedan fuera del alcance.
+> 🔐 **JWT y roles:** los likes y la baja necesitan saber *quién* hace el request, así que el login
+> devuelve un `token` y las rutas protegidas exigen `Authorization: Bearer ...`. El Sprint #4 sumó el
+> refresco, la validación de la sesión y el **`RolesGuard`** real: `/api/usuarios` responde **403** a
+> cualquier perfil que no sea `administrador`. Además el `JwtAuthGuard` consulta la base en cada
+> request, así una cuenta dada de baja (o un cambio de rol) tiene efecto inmediato y no hay que
+> esperar a que venza el token.
 
 
 ---
@@ -305,8 +310,8 @@ backend/
 | Módulo | Responsabilidad |
 |---|---|
 | `AppModule` | Configuración global: carga el `.env` y la conexión a MongoDB; importa el resto de los módulos |
-| `UsuariosModule` | Define el **modelo** `Usuario` (`forFeature`) y lo **exporta** para que otros módulos lo usen |
-| `AuthModule` | Rutas de registro/login. Importa `UsuariosModule` (modelo) y `CloudinaryModule` (imágenes) |
+| `UsuariosModule` | Define el **modelo** `Usuario` (`forFeature`), lo **exporta** y expone el dashboard de administración (listado, alta y baja lógica). Importa `AuthModule` con `forwardRef` por el ciclo de módulos |
+| `AuthModule` | Rutas de registro/login + `JwtAuthGuard` y `RolesGuard`. Importa `UsuariosModule` (modelo y `UsuariosService`) con `forwardRef`, y `CloudinaryModule` ya no lo necesita: el alta con imagen vive en `UsuariosService` |
 | `CloudinaryModule` | Provee `CloudinaryService` (subida de archivos a `red-social/perfiles` y `red-social/publicaciones`) |
 | `PublicacionesModule` | Modelo `Publicacion` + rutas del feed. Importa `AuthModule` (para el `JwtAuthGuard`) y `CloudinaryModule` |
 | `ComentarioModule` | Modelo `Comentario` + rutas de comentarios. Registra también `Publicacion` para verificar que exista antes de listar o crear |
@@ -418,6 +423,12 @@ export class Usuario {
 
   @Prop({ type: String, enum: PERFILES, default: 'usuario' })
   perfil: Perfil;
+
+  @Prop({ default: true, index: true })
+  activo: boolean;
+
+  @Prop()
+  fechaBaja?: Date;
   // ...nombre, apellido, nombreUsuario, fechaNacimiento, descripcion, imagenPerfilUrl
 }
 
@@ -432,6 +443,7 @@ export const UsuarioSchema = SchemaFactory.createForClass(Usuario);
 | `select: false` en `password` | El hash **no** se trae en las consultas por defecto: evita filtrarlo en listados o `populate`. El login lo pide con `.select('+password')` |
 | `enum: PERFILES` | Solo acepta `usuario` o `administrador` (validación en la base) |
 | `default: 'usuario'` | Nadie se registra como administrador desde la API |
+| `activo` / `fechaBaja` | **Baja lógica** (Sprint 4): el documento no se borra, sus publicaciones y comentarios siguen visibles. `activo: { $ne: false }` en las consultas incluye a los usuarios viejos, que no tienen el campo |
 | `HydratedDocument<Usuario>` | Tipo del documento que devuelve Mongo (incluye métodos como `.save()`) |
 
 ```ts
@@ -972,6 +984,69 @@ Baja lógica. Sólo el autor del comentario o un administrador (**403** si no);
 > simétrico con el `POST`: por eso vive en un segundo controller
 > (`ComentariosController`) con su propia ruta base.
 
+### Rutas de usuarios (sólo `perfil: 'administrador'`)
+
+Viven en `UsuariosController`, que lleva `@UseGuards(JwtAuthGuard, RolesGuard)` y
+`@Roles('administrador')` a nivel de clase:
+
+- **401** si falta el token, está vencido o la cuenta fue dada de baja (`motivo: 'CUENTA_DESHABILITADA'`).
+- **403** si el perfil no es `administrador` (`Sólo un administrador puede realizar esta acción`).
+
+#### `GET /api/usuarios` → **200**
+
+| Query | Default | Reglas |
+|---|---|---|
+| `offset` | `0` | entero ≥ 0 |
+| `limit` | `10` | entre 1 y 50 |
+| `busqueda` | — | nombre, apellido, correo y nombre de usuario; sin distinguir mayúsculas y con los caracteres especiales escapados |
+| `estado` | — | `activos` (usa `activo: { $ne: false }`) o `deshabilitados` (`activo: false`) |
+| `perfil` | — | `usuario` o `administrador` |
+
+```json
+{
+  "total": 12,
+  "offset": 0,
+  "limit": 10,
+  "hayMas": true,
+  "usuarios": [
+    {
+      "id": "6712f3c9a8b4d5e6f7a8b9c0",
+      "nombre": "Ana",
+      "apellido": "Moreno",
+      "correo": "ana@correo.com",
+      "nombreUsuario": "anamoreno",
+      "perfil": "usuario",
+      "activo": true,
+      "fechaBaja": null
+    }
+  ]
+}
+```
+
+#### `POST /api/usuarios` → **201**
+
+`multipart/form-data` con los mismos campos que el registro (`nombre`, `apellido`, `correo`,
+`nombreUsuario`, `password`, `fechaNacimiento`, `descripcion` e `imagen` opcional) más `perfil`
+(`usuario` | `administrador`, por defecto `usuario`). El DTO es `CrearUsuarioDto extends RegisterDto`,
+así las validaciones son literalmente las mismas.
+
+#### `DELETE /api/usuarios/:id` → **200**
+
+Baja lógica: `activo: false` y `fechaBaja: new Date()`. **403** si el administrador intenta
+deshabilitarse a sí mismo y **404** si el usuario no existe. Sus publicaciones y comentarios **no**
+se borran (la consigna sólo pide que no pueda ingresar).
+
+#### `PATCH /api/usuarios/:id/estado` → **200**
+
+`{ "activo": true | false }`, idempotente. Al rehabilitar, `fechaBaja` se elimina con `$unset`.
+
+```json
+{ "id": "6712f3c9a8b4d5e6f7a8b9c0", "activo": false, "fechaBaja": "2026-11-11T10:00:00.000Z" }
+```
+
+> `POST /auth/login` y `GET /auth/autorizar` también rechazan las cuentas deshabilitadas con **401** y
+> `motivo: 'CUENTA_DESHABILITADA'`, para que el front muestre ese aviso en lugar de "la sesión expiró".
+
 ---
 
 ## Imagen de perfil por defecto
@@ -1295,6 +1370,15 @@ borrar, `eliminado` pasa a `true` con `fechaEliminacion` (el documento no se bor
 | D31 | `texto` con `trim` en el DTO **y** en el esquema, máx. **500** | El front limita el textarea a 500 y el backend no confía en el front: un request manual no puede guardar `"   "` |
 | D32 | Tests de `ComentarioService` con modelos mockeados (sin Atlas) | Los 9 casos (listar/crear/eliminar, 403/404/500) corren siempre, igual que los del feed |
 | D33 | `tsBuildInfoFile` dentro de `dist/` (`tsconfig.build.json`) | `nest-cli.json` usa `deleteOutDir`; con el `.tsbuildinfo` al lado del `tsconfig` sobrevivía al borrado, `tsc` se salteaba el emit y `start:dev` moría con `Cannot find module dist/main` |
+| D34 | Baja lógica con `activo` + `fechaBaja` (no se borra el documento) | La consigna pide "deshabilitar": el usuario no puede ingresar pero sus publicaciones y comentarios no desaparecen del feed |
+| D35 | Los filtros usan `activo: { $ne: false }`, no `activo: true` | Los usuarios creados antes del Sprint #4 no tienen el campo en Atlas: con `true` estricto desaparecerían del listado y de los filtros |
+| D36 | `JwtAuthGuard` **async** y consulta la base en cada request (`select('activo perfil')`) | Con un token de 15 minutos, sin esta consulta una cuenta deshabilitada seguiría usando la API hasta que venciera; además el `perfil` se toma fresco, así quitar el rol tiene efecto inmediato |
+| D37 | `RolesGuard` + `@Roles('administrador')` devuelve **403** (no 401) | El usuario está autenticado pero no autorizado: 401 haría que el front cierre la sesión por un problema de permisos |
+| D38 | El alta vive en `UsuariosService.crear` y `AuthService.registrar` delega con `perfil: 'usuario'` | Una sola implementación de duplicados + bcrypt + Cloudinary; el registro público no puede crear administradores porque el servicio pisa el perfil |
+| D39 | `forwardRef()` entre `AuthModule` y `UsuariosModule` | Usuarios necesita los guards de Auth y Auth necesita `UsuariosService` y el modelo: el ciclo es de módulos, no de providers, y Nest lo resuelve así |
+| D40 | El filtro global propaga `motivo` en el cuerpo del error | El front distingue un 401 por cuenta deshabilitada de uno por token vencido sin comparar textos, y manda a `/login?sesion=deshabilitada` |
+| D41 | `DELETE /usuarios/:id` deshabilita y `PATCH /:id/estado` alterna; **403** al deshabilitarse a sí mismo | Dos endpoints para la misma operación dejan el `DELETE` semánticamente correcto y el `PATCH` idempotente; el 403 evita que el panel quede sin administradores |
+| D42 | `AuthModule` registra **y reexporta** `MongooseModule.forFeature(Usuario)` | `@UseGuards(JwtAuthGuard)` crea el guard en el contexto del módulo que declara la ruta, así que publicaciones y comentarios también necesitan `UsuarioModel`: sin la reexportación, el arranque falla con `Nest can't resolve dependencies of the JwtAuthGuard` (los unit tests no lo detectan porque mockean el guard) |
 
 ---
 

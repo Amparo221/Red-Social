@@ -12,6 +12,10 @@ export interface UsuarioResponse {
   descripcion: string;
   imagenPerfilUrl: string;
   perfil: Perfil;
+  /** Baja lógica (Sprint 4). `false` = deshabilitado. */
+  activo: boolean;
+  /** Fecha de la baja lógica; `null` mientras la cuenta está habilitada. */
+  fechaBaja: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -27,6 +31,10 @@ export function toUsuarioResponse(usuario: UsuarioDocument): UsuarioResponse {
     descripcion: usuario.descripcion,
     imagenPerfilUrl: usuario.imagenPerfilUrl,
     perfil: usuario.perfil,
+    // `!== false` a propósito: un usuario creado antes del Sprint #4 no tiene
+    // el campo en la base y tiene que seguir contando como habilitado.
+    activo: usuario.activo !== false,
+    fechaBaja: usuario.fechaBaja ?? null,
     createdAt: usuario.createdAt,
     updatedAt: usuario.updatedAt,
   };

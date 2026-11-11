@@ -1,22 +1,21 @@
-import {
-  ConflictException,
-  InternalServerErrorException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcryptjs';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { Usuario } from '../usuarios/schemas/usuario.schema';
+import { UsuariosService } from '../usuarios/usuarios.service';
 import { AuthService } from './auth.service';
+import {
+  CUENTA_DESHABILITADA,
+  MOTIVO_CUENTA_DESHABILITADA,
+} from './constants/cuenta-deshabilitada';
 
+const TOKEN = 'token-de-prueba';
+const USUARIO_ID = '507f1f77bcf86cd799439011';
 const AVATAR_POR_DEFECTO =
   'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/default.png';
-const IMAGEN_SUBIDA =
-  'https://res.cloudinary.com/demo/image/upload/red-social/perfiles/nueva.png';
-const TOKEN = 'token-de-prueba';
 
 const registroValido = {
   nombre: 'Ana',
@@ -30,21 +29,31 @@ const registroValido = {
 
 // Documento que "devuelve" Mongo en los tests (sin tocar la base real).
 const documentoGuardado = (datos: Record<string, unknown>) => ({
-  _id: '507f1f77bcf86cd799439011',
+  _id: USUARIO_ID,
   createdAt: new Date('2026-01-01T00:00:00.000Z'),
   updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   ...datos,
 });
 
+// Lo que devuelve `UsuariosService.crear` (ya sin password ni __v).
+const usuarioCreado = {
+  id: USUARIO_ID,
+  nombre: 'Ana',
+  apellido: 'Moreno',
+  correo: 'ana@correo.com',
+  nombreUsuario: 'anamoreno',
+  fechaNacimiento: '1998-05-20',
+  descripcion: 'Hola!',
+  imagenPerfilUrl: AVATAR_POR_DEFECTO,
+  perfil: 'usuario' as const,
+  activo: true,
+  fechaBaja: null,
+};
+
 describe('AuthService', () => {
   let service: AuthService;
-  let usuarioModel: {
-    exists: jest.Mock;
-    findOne: jest.Mock;
-    findById: jest.Mock;
-    create: jest.Mock;
-  };
-  let cloudinaryService: { uploadImage: jest.Mock };
+  let usuarioModel: { findOne: jest.Mock; findById: jest.Mock };
+  let usuariosService: { crear: jest.Mock };
   let jwtService: { sign: jest.Mock };
   /** Simula el .env del backend: cada test agrega o pisa las variables que usa. */
   let variablesDeEntorno: Record<string, string | undefined>;
@@ -53,18 +62,19 @@ describe('AuthService', () => {
     select: jest.fn().mockResolvedValue(usuario),
   });
 
+  const darUsuarioPorId = (usuario: unknown) => ({
+    exec: jest.fn().mockResolvedValue(usuario),
+  });
+
   beforeEach(async () => {
     variablesDeEntorno = { DEFAULT_AVATAR_URL: AVATAR_POR_DEFECTO };
     usuarioModel = {
-      exists: jest.fn().mockResolvedValue(null),
       findOne: jest.fn(),
       findById: jest.fn(),
-      create: jest.fn((datos: Record<string, unknown>) =>
-        Promise.resolve(documentoGuardado(datos)),
-      ),
     };
-    cloudinaryService = {
-      uploadImage: jest.fn().mockResolvedValue(IMAGEN_SUBIDA),
+    // El alta ahora vive en UsuariosService: acá sólo se comprueba la delegación.
+    usuariosService = {
+      crear: jest.fn().mockResolvedValue(usuarioCreado),
     };
     // No firmamos un JWT real: alcanza con comprobar QUÉ datos se firman.
     jwtService = { sign: jest.fn().mockReturnValue(TOKEN) };
@@ -73,7 +83,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: getModelToken(Usuario.name), useValue: usuarioModel },
-        { provide: CloudinaryService, useValue: cloudinaryService },
+        { provide: UsuariosService, useValue: usuariosService },
         { provide: JwtService, useValue: jwtService },
         {
           provide: ConfigService,
@@ -89,121 +99,42 @@ describe('AuthService', () => {
   });
 
   describe('registrar', () => {
-    it('guarda el hash de la contraseña y la imagen por defecto', async () => {
-      const resultado = await service.registrar(registroValido);
-
-      const datosGuardados = usuarioModel.create.mock.calls[0][0];
-      expect(datosGuardados.password).not.toBe(registroValido.password);
-      expect(
-        await bcrypt.compare(registroValido.password, datosGuardados.password),
-      ).toBe(true);
-      expect(datosGuardados.imagenPerfilUrl).toBe(AVATAR_POR_DEFECTO);
-      expect(datosGuardados.perfil).toBe('usuario');
-      expect(cloudinaryService.uploadImage).not.toHaveBeenCalled();
-
-      expect(resultado.id).toBe('507f1f77bcf86cd799439011');
-      expect(resultado).not.toHaveProperty('password');
-      expect(resultado).not.toHaveProperty('_id');
-    });
-
-    it('firma un token con el id, el nombre de usuario y el perfil', async () => {
-      const resultado = await service.registrar(registroValido);
-
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        sub: '507f1f77bcf86cd799439011',
-        nombreUsuario: 'anamoreno',
-        perfil: 'usuario',
-      });
-      expect(resultado.token).toBe(TOKEN);
-    });
-
-    it('sube la imagen a Cloudinary cuando el usuario adjunta un archivo', async () => {
+    it('delega el alta en UsuariosService con el perfil "usuario" y la imagen', async () => {
       const archivo = { buffer: Buffer.from('imagen') } as Express.Multer.File;
 
       const resultado = await service.registrar(registroValido, archivo);
 
-      expect(cloudinaryService.uploadImage).toHaveBeenCalledWith(archivo);
-      expect(usuarioModel.create.mock.calls[0][0].imagenPerfilUrl).toBe(
-        IMAGEN_SUBIDA,
+      expect(usuariosService.crear).toHaveBeenCalledWith(
+        { ...registroValido, perfil: 'usuario' },
+        archivo,
       );
-      expect(resultado.imagenPerfilUrl).toBe(IMAGEN_SUBIDA);
+      // El registro público devuelve lo mismo que antes: el usuario + el token.
+      expect(resultado.id).toBe(USUARIO_ID);
+      expect(resultado.token).toBe(TOKEN);
+      expect(resultado).not.toHaveProperty('password');
+      expect(resultado).not.toHaveProperty('_id');
     });
 
-    it('rechaza con 409 si el correo ya está registrado', async () => {
-      usuarioModel.exists.mockResolvedValueOnce({ _id: 'otro' });
+    it('pisa el perfil que venga en el body: nadie se registra como administrador', async () => {
+      // Variable aparte a propósito: así el objeto puede tener un campo de más
+      // sin que TypeScript lo rechace por "excess property".
+      const intentoDeAdmin = { ...registroValido, perfil: 'administrador' };
 
-      await expect(service.registrar(registroValido)).rejects.toBeInstanceOf(
-        ConflictException,
-      );
-      expect(usuarioModel.create).not.toHaveBeenCalled();
-    });
+      await service.registrar(intentoDeAdmin);
 
-    it('rechaza con 409 si el nombre de usuario ya está en uso', async () => {
-      usuarioModel.exists
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ _id: 'otro' });
-
-      await expect(service.registrar(registroValido)).rejects.toThrow(
-        'El nombre de usuario ya está en uso',
+      expect(usuariosService.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ perfil: 'usuario' }),
+        undefined,
       );
     });
 
-    it('traduce el error 11000 (índice unique) en un 409', async () => {
-      usuarioModel.create.mockRejectedValue({ code: 11000 });
+    it('firma un token con el id, el nombre de usuario y el perfil', async () => {
+      await service.registrar(registroValido);
 
-      await expect(service.registrar(registroValido)).rejects.toBeInstanceOf(
-        ConflictException,
-      );
-    });
-
-    it('responde 500 con el detalle si la base de datos falla', async () => {
-      usuarioModel.create.mockRejectedValue(new Error('connection timed out'));
-
-      const error: unknown = await service
-        .registrar(registroValido)
-        .catch((fallo: unknown) => fallo);
-
-      expect(error).toBeInstanceOf(InternalServerErrorException);
-      expect(
-        (error as InternalServerErrorException).getResponse(),
-      ).toMatchObject({
-        statusCode: 500,
-        message: 'No se pudo crear el usuario',
-        detalle: 'connection timed out',
-      });
-    });
-
-    it('responde 500 con el detalle si Cloudinary rechaza la imagen', async () => {
-      cloudinaryService.uploadImage.mockRejectedValue(
-        new Error('Must supply api_key'),
-      );
-
-      const error: unknown = await service
-        .registrar(registroValido, {
-          buffer: Buffer.from('imagen'),
-        } as Express.Multer.File)
-        .catch((fallo: unknown) => fallo);
-
-      expect(error).toBeInstanceOf(InternalServerErrorException);
-      expect(
-        (error as InternalServerErrorException).getResponse(),
-      ).toMatchObject({
-        detalle: 'Must supply api_key',
-      });
-      // Si la imagen no se pudo subir no se guarda nada en la base.
-      expect(usuarioModel.create).not.toHaveBeenCalled();
-    });
-
-    it('propaga el 409 de la verificación de duplicados sin convertirlo en 500', async () => {
-      usuarioModel.exists.mockResolvedValueOnce({ _id: 'ya-existe' });
-
-      const error: unknown = await service
-        .registrar(registroValido)
-        .catch((fallo: unknown) => fallo);
-
-      expect(error).toBeInstanceOf(ConflictException);
-      expect((error as ConflictException).getResponse()).toMatchObject({
-        message: 'El correo ya está registrado',
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        sub: USUARIO_ID,
+        nombreUsuario: 'anamoreno',
+        perfil: 'usuario',
       });
     });
   });
@@ -304,13 +235,32 @@ describe('AuthService', () => {
         service.login('anamoreno', 'OtraClave1'),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
+
+    it('lanza 401 con motivo CUENTA_DESHABILITADA si la cuenta está dada de baja', async () => {
+      const password = await hashValido();
+      usuarioModel.findOne.mockReturnValue(
+        darResultadoDeFindOne(
+          documentoGuardado({ ...registroValido, password, activo: false }),
+        ),
+      );
+
+      const error: unknown = await service
+        .login('anamoreno', 'Segura123')
+        .catch((fallo: unknown) => fallo);
+
+      expect(error).toBeInstanceOf(UnauthorizedException);
+      expect(
+        (error as UnauthorizedException).getResponse(),
+      ).toMatchObject({
+        message: CUENTA_DESHABILITADA,
+        motivo: MOTIVO_CUENTA_DESHABILITADA,
+      });
+      // No se firma token para una cuenta deshabilitada.
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
   });
 
   describe('autorizar', () => {
-    const darUsuarioPorId = (usuario: unknown) => ({
-      exec: jest.fn().mockResolvedValue(usuario),
-    });
-
     it('devuelve el usuario del token sin la contraseña', async () => {
       usuarioModel.findById.mockReturnValue(
         darUsuarioPorId(
@@ -349,13 +299,29 @@ describe('AuthService', () => {
         service.autorizar('507f1f77bcf86cd799439011'),
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
+
+    it('lanza 401 con motivo si la cuenta fue deshabilitada después del login', async () => {
+      usuarioModel.findById.mockReturnValue(
+        darUsuarioPorId(
+          documentoGuardado({
+            ...registroValido,
+            password: 'hash',
+            activo: false,
+          }),
+        ),
+      );
+
+      const error: unknown = await service
+        .autorizar('507f1f77bcf86cd799439011')
+        .catch((fallo: unknown) => fallo);
+
+      expect(
+        (error as UnauthorizedException).getResponse(),
+      ).toMatchObject({ motivo: MOTIVO_CUENTA_DESHABILITADA });
+    });
   });
 
   describe('refrescar', () => {
-    const darUsuarioPorId = (usuario: unknown) => ({
-      exec: jest.fn().mockResolvedValue(usuario),
-    });
-
     it('firma un token nuevo con los datos del usuario vigente', async () => {
       usuarioModel.findById.mockReturnValue(
         darUsuarioPorId(
