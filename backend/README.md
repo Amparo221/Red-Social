@@ -131,30 +131,49 @@ valores viejos:
 #### Si el deploy devuelve `FUNCTION_INVOCATION_FAILED` en **todas** las rutas
 
 Ese error no es una ruta rota: la función **no llega a cargar**. En los *Runtime Logs* aparece
-`Cannot find module '@nestjs/common'` con el stack arrancando en `/var/task/main.js`.
+`Cannot find module '@nestjs/...'` (el clásico es `'@nestjs/common'`).
 
 Con el builder actual (`@vercel/backends`, zero-config) la función se arma dentro de
 `.vercel/output/services/backend/functions/index.func/`, con `handler: backend/src/main.cjs` y las
-dependencias que rastrea `@vercel/nft` **copiadas dentro de la función** (`backend/node_modules/...`,
-ver `filePathMap`). Como el handler y las dependencias comparten esa raíz, el bundle es autoconsistente
-y el hoisting **ya no hace falta**: por eso `457ce90` sacó `node scripts/hoist-node-modules.js` del
-`services.backend.buildCommand`, que ahora es sólo `npm run build`. El script quedó en
-`backend/scripts/` como referencia histórica, sin uso.
+dependencias que rastrea `@vercel/nft` copiadas dentro de la función.
+
+El detalle que rompe el arranque: por cada dependencia externa el builder genera un *shim* en
+`index.func/_virtual/` que hace `createRequire(join(<raíz de la función>, 'package.json'))`, es decir que
+resuelve desde la **raíz del proyecto**, no desde `index.func/backend/`. Si las dependencias quedan en
+`backend/node_modules` —que es lo que hace Vercel por defecto, porque instala **dentro de cada service**—
+el `require('@nestjs/mongoose')` del shim busca en `index.func/node_modules`, no lo encuentra y la función
+muere antes de escuchar: **500 `FUNCTION_INVOCATION_FAILED` en todas las rutas, con el build en *Ready***.
+
+Por eso el repo tiene un `package.json` **en la raíz** con `"workspaces": ["backend"]`. Con eso `npm install`
+(que Vercel corre en `backend/`) hoistea las dependencias a `<repo>/node_modules`, nft las copia en
+`index.func/node_modules/...` —justo donde las busca el shim— y además siguen resolviendo desde
+`backend/src` por el walk-up normal de Node. El script `hoist-node-modules.js` de `backend/scripts/` ya no
+se usa: el hoisting lo hace npm.
+
+> ⚠️ **No romper esto:** si se borra el `package.json` de la raíz, o se instala con `npm ci` dentro de
+> `backend/`, las dependencias vuelven a `backend/node_modules` y el deploy arranca en 500 aunque el build
+> diga *Ready*. Por eso `services.backend.installCommand` es explícito (`npm install --no-audit --no-fund`):
+> no depende del default de la plataforma. El lockfile válido es el de la raíz (un workspace ignora el de
+> cada paquete, por eso `backend/package-lock.json` ya no existe).
 
 > **Historia (builder viejo, `@vercel/node`):** `nest build` se aplanaba en `/var/task/main.js` pero las
 > dependencias quedaban en `/var/task/backend/node_modules`, así que Node buscaba en
-> `/var/task/node_modules` y fallaba el primer `require`. El hoist movía `node_modules` a la raíz del
-> monorepo antes del empaquetado. Si algún día vuelve ese layout, el script sigue disponible.
+> `/var/task/node_modules` y fallaba el primer `require`. Entonces el hoist lo hacía un script
+> (`node scripts/hoist-node-modules.js`) dentro del `buildCommand`. Hoy el problema de fondo es el mismo
+> —dependencias fuera de la raíz— pero lo resuelve npm con workspaces.
 
 > **Otro síntoma distinto:** si el log dice `ERR_REQUIRE_ESM` (`require() of ES Module … /@nestjs/common/index.js`),
 > el empaquetado está bien pero volvió a entrar **NestJS 12** (que publica sólo ESM) en un proyecto que compila a
 > CommonJS. Ver D29: la salida del proyecto es CommonJS, así que las dependencias de Nest tienen que ser la 11.
 
 Para verificarlo sin desplegar: `vercel build --prod` y revisar
-`.vercel/output/services/backend/functions/index.func/.vc-config.json` — el `handler` termina en
-`main.cjs` y **cada** valor del `filePathMap` tiene que ser un archivo que exista **dentro** de la
-carpeta de la función (hoy son `backend/node_modules/...`). Si apunta a una ruta que no está, el bundle
-quedó a medio armar: volver a buildear.
+`.vercel/output/services/backend/functions/index.func/` — el `handler` de `.vc-config.json` tiene que
+terminar en `main.cjs`, **cada** valor del `filePathMap` tiene que existir dentro de la carpeta de la
+función (hoy son `node_modules/...`, en la raíz de la función) y tiene que existir
+`index.func/node_modules/@nestjs` (si sólo hay `index.func/backend/node_modules`, el hoisting falló).
+Prueba final, sin desplegar: `node .vercel/output/services/backend/functions/index.func/backend/src/main.cjs`
+con `MONGODB_URI` y `JWT_SECRET` dummy — si tira `Cannot find module '@nestjs/...'`, el bundle está mal.
+
 
 #### Si **todo** responde `404 NOT_FOUND` (incluida la raíz `/`)
 

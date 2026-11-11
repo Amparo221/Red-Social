@@ -4,6 +4,7 @@
     "backend": {
       "root": "backend/",
       "framework": "nestjs",
+      "installCommand": "npm install --no-audit --no-fund",
       "buildCommand": "npm run build"
     },
     "frontend": {
