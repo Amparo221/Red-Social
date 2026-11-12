@@ -1,8 +1,8 @@
-# Red Social — Backend (Sprints #1 a #4)
+# Red Social — Backend (Sprints #1 a #5)
 
 API REST de una red social, desarrollada con **NestJS + MongoDB Atlas + Cloudinary**.
 
-Este repositorio implementa los **Sprints #1 a #4 del backend**:
+Este repositorio implementa los **Sprints #1 a #5 del backend**:
 
 - **Sprint #1 — Usuarios**
   - **Registro de usuarios** (`POST /api/auth/registro`): validación de los datos, foto de perfil
@@ -27,6 +27,11 @@ Este repositorio implementa los **Sprints #1 a #4 del backend**:
   - **Usuarios (sólo administradores):** listado con búsqueda y filtros
     (`GET /api/usuarios`), alta con perfil a elección (`POST /api/usuarios`) y **baja lógica**
     (`DELETE /api/usuarios/:id` + `PATCH /api/usuarios/:id/estado`).
+- **Sprint #5 — Estadísticas (sólo administradores)**
+  - **`GET /api/estadisticas`** con tres métricas del período: **publicaciones por usuario**,
+    **comentarios en el tiempo** (por día, semana o mes) y **comentarios por publicación**.
+  - Filtro por rango de fechas (`desde`/`hasta`) y `limite` para los dos rankings; todo resuelto
+    con agregaciones (`$match` + `$group` + `$sort`), sin colecciones ni índices nuevos.
 
 > 🔐 **JWT y roles:** los likes y la baja necesitan saber *quién* hace el request, así que el login
 > devuelve un `token` y las rutas protegidas exigen `Authorization: Bearer ...`. El Sprint #4 sumó el
@@ -282,27 +287,37 @@ backend/
 │   │   ├── salud.module.ts
 │   │   ├── salud.controller.ts       # GET /api/salud: ¿arrancó? ¿Mongo conectado? ¿env vars cargadas?
 │   │   └── salud.controller.spec.ts
-│   └── publicaciones/
-│       ├── publicaciones.module.ts
-│       ├── publicaciones.controller.ts   # rutas HTTP del feed y del detalle
-│       ├── publicaciones.service.ts      # lógica: alta, feed, detalle, likes, baja lógica
-│       ├── publicaciones.service.spec.ts
-│       ├── schemas/publicacion.schema.ts
-│       ├── dto/
-│       │   ├── create-publicacion.dto.ts
-│       │   └── listar-publicaciones.dto.ts
-│       └── utils/publicacion-response.util.ts  # forma pública + autor populado
-│   └── comentarios/                  # Sprint #3
-│       ├── comentario.module.ts      # registra Comentario + Publicacion (para validar el id)
-│       ├── comentario.controller.ts  # GET/POST en /publicaciones y DELETE en /comentarios
-│       ├── comentario.service.ts     # listar, crear y baja lógica
-│       ├── comentario.service.spec.ts
-│       ├── schemas/comentario.schema.ts
-│       ├── dto/crear-comentario.dto.ts
-│       └── utils/comentario-response.util.ts  # forma pública + autor populado
+│   ├── publicaciones/
+│   │   ├── publicaciones.module.ts
+│   │   ├── publicaciones.controller.ts   # rutas HTTP del feed y del detalle
+│   │   ├── publicaciones.service.ts      # lógica: alta, feed, detalle, likes, baja lógica
+│   │   ├── publicaciones.service.spec.ts
+│   │   ├── schemas/publicacion.schema.ts
+│   │   ├── dto/
+│   │   │   ├── create-publicacion.dto.ts
+│   │   │   └── listar-publicaciones.dto.ts
+│   │   └── utils/publicacion-response.util.ts  # forma pública + autor populado
+│   ├── comentarios/                  # Sprint #3
+│   │   ├── comentario.module.ts      # registra Comentario + Publicacion (para validar el id)
+│   │   ├── comentario.controller.ts  # GET/POST en /publicaciones y DELETE en /comentarios
+│   │   ├── comentario.service.ts     # listar, crear y baja lógica
+│   │   ├── comentario.service.spec.ts
+│   │   ├── schemas/comentario.schema.ts
+│   │   ├── dto/crear-comentario.dto.ts
+│   │   └── utils/comentario-response.util.ts  # forma pública + autor populado
+│   └── estadisticas/                 # Sprint #5
+│       ├── estadisticas.module.ts    # registra los tres modelos (sólo lectura) + AuthModule
+│       ├── estadisticas.controller.ts # GET /estadisticas (sesión + perfil administrador)
+│       ├── estadisticas.service.ts   # las tres agregaciones, los totales y el rango
+│       ├── estadisticas.service.spec.ts
+│       ├── dto/consultar-estadisticas.dto.ts  # desde, hasta, agrupacion, limite
+│       └── utils/
+│           ├── periodos.util.ts      # días/semanas/meses en hora argentina + cero-relleno
+│           └── periodos.util.spec.ts
 └── test/
     ├── auth.e2e-spec.ts          # pruebas de la capa HTTP (AuthService mockeado, sin DB)
-    └── publicaciones.e2e-spec.ts # idem para el feed (guard y servicio mockeados)
+    ├── publicaciones.e2e-spec.ts # idem para el feed (guard y servicio mockeados)
+    └── estadisticas.e2e-spec.ts  # 401 / 403 / 400 / 200 de /estadisticas
 ```
 
 **Responsabilidad de cada módulo**
@@ -315,6 +330,7 @@ backend/
 | `CloudinaryModule` | Provee `CloudinaryService` (subida de archivos a `red-social/perfiles` y `red-social/publicaciones`) |
 | `PublicacionesModule` | Modelo `Publicacion` + rutas del feed. Importa `AuthModule` (para el `JwtAuthGuard`) y `CloudinaryModule` |
 | `ComentarioModule` | Modelo `Comentario` + rutas de comentarios. Registra también `Publicacion` para verificar que exista antes de listar o crear |
+| `EstadisticasModule` | Sólo lectura: registra `Publicacion`, `Comentario` y `Usuario` para las agregaciones del dashboard (Sprint 5) e importa `AuthModule` por los guards. No define esquemas |
 
 
 ---
@@ -1047,6 +1063,75 @@ se borran (la consigna sólo pide que no pueda ingresar).
 > `POST /auth/login` y `GET /auth/autorizar` también rechazan las cuentas deshabilitadas con **401** y
 > `motivo: 'CUENTA_DESHABILITADA'`, para que el front muestre ese aviso en lugar de "la sesión expiró".
 
+### Rutas de estadísticas (sólo `perfil: 'administrador'`)
+
+`EstadisticasController` lleva los mismos guards que el de usuarios
+(`@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('administrador')`): **401** sin token (o
+con la cuenta dada de baja) y **403** para un usuario común.
+
+#### `GET /api/estadisticas` → **200**
+
+| Query | Default | Reglas |
+|---|---|---|
+| `desde` | hoy − 29 días | fecha `AAAA-MM-DD` (o ISO 8601) |
+| `hasta` | hoy (en Argentina) | fecha; no puede ser anterior a `desde` (**400**) |
+| `agrupacion` | `dia` | `dia` \| `semana` \| `mes` (**400** con otro valor) |
+| `limite` | `10` | entero entre 3 y 20: filas de los dos rankings |
+
+- El rango completo no puede superar los **366 días** (**400**).
+- Los dos extremos se interpretan en hora argentina: `desde=2026-11-01` incluye todo el 1/11.
+- No se cuentan publicaciones ni comentarios dados de baja (`eliminado: false`).
+
+```json
+{
+  "rango": {
+    "desde": "2026-10-13T03:00:00.000Z",
+    "hasta": "2026-11-11T02:59:59.999Z",
+    "agrupacion": "dia",
+    "limite": 10
+  },
+  "totales": {
+    "publicaciones": 27,
+    "usuariosConPublicaciones": 4,
+    "comentarios": 63,
+    "publicacionesConComentarios": 9
+  },
+  "publicacionesPorUsuario": [
+    { "usuarioId": "6712f3c9a8b4d5e6f7a8b9c0", "nombre": "Ana Moreno", "nombreUsuario": "anamoreno", "total": 12 }
+  ],
+  "comentariosPorPeriodo": [
+    {
+      "clave": "2026-11-01",
+      "etiqueta": "1 nov",
+      "desde": "2026-11-01T03:00:00.000Z",
+      "hasta": "2026-11-02T02:59:59.999Z",
+      "total": 4
+    }
+  ],
+  "comentariosPorPublicacion": [
+    {
+      "publicacionId": "6713a4b5c6d7e8f9a0b1c2d3",
+      "titulo": "Colibrí garganta rubí",
+      "autor": "betoperez",
+      "eliminada": false,
+      "total": 7
+    }
+  ]
+}
+```
+
+Cómo se calcula cada métrica (`estadisticas.service.ts`):
+
+| Métrica | Pipeline | Paso extra |
+|---|---|---|
+| `publicacionesPorUsuario` | `$match` → `$group { _id: '$usuario', total: { $sum: 1 } }` → `$sort { total: -1, _id: 1 }` | `find({ _id: { $in } })` para el nombre y el `@usuario` |
+| `comentariosPorPeriodo` | `$match` → `$group` con `$dateToString` (`%Y-%m-%d`, `%G-W%V` o `%Y-%m`) y `timezone: 'America/Argentina/Buenos_Aires'` | `utils/periodos.util.ts` completa con **0** los períodos sin comentarios |
+| `comentariosPorPublicacion` | `$match` → `$group { _id: '$publicacion', total: { $sum: 1 } }` → `$sort { total: -1, _id: 1 }` | `populate('usuario', 'nombreUsuario')` y bandera `eliminada` |
+
+Los dos rankings se cortan con `slice(0, limite)` en el servicio (no con `$limit`) porque el
+total del encabezado sale de la misma agrupación: agrupar por usuario o por publicación
+devuelve, como mucho, una fila por documento distinto.
+
 ---
 
 ## Imagen de perfil por defecto
@@ -1330,6 +1415,22 @@ borrar, `eliminado` pasa a `true` con `fechaEliminacion` (el documento no se bor
 
 ---
 
+## Estado del Sprint #5
+
+- [x] `GET /api/estadisticas` con las tres métricas en una sola respuesta (`rango`, `totales` y las tres listas).
+- [x] Agregaciones con `$match`/`$group`/`$sort` sobre las colecciones existentes: sin esquemas, índices ni
+      campos nuevos.
+- [x] Series temporales agrupadas por `dia`, `semana` (ISO) o `mes` **en hora argentina**, con los períodos
+      sin actividad completados en `0`.
+- [x] Rango validado (`hasta >= desde`, máximo 366 días) y `limite` entre 3 y 20 con mensajes en español.
+- [x] `EstadisticasModule` protegido con `JwtAuthGuard` + `RolesGuard` (`@Roles('administrador')`).
+- [x] Tests unitarios del servicio (métricas, totales, recorte del ranking, zona horaria, 400 y 500),
+      de `periodos.util` (semana ISO, recortes de rango y cero-relleno) y e2e de la capa HTTP
+      (401/403/400/200).
+- [x] `npm test`, `npm run test:e2e`, `npm run typecheck`, `npm run lint` y `npm run build` sin errores.
+
+---
+
 ## Decisiones técnicas
 
 | # | Decisión | Por qué |
@@ -1379,6 +1480,11 @@ borrar, `eliminado` pasa a `true` con `fechaEliminacion` (el documento no se bor
 | D40 | El filtro global propaga `motivo` en el cuerpo del error | El front distingue un 401 por cuenta deshabilitada de uno por token vencido sin comparar textos, y manda a `/login?sesion=deshabilitada` |
 | D41 | `DELETE /usuarios/:id` deshabilita y `PATCH /:id/estado` alterna; **403** al deshabilitarse a sí mismo | Dos endpoints para la misma operación dejan el `DELETE` semánticamente correcto y el `PATCH` idempotente; el 403 evita que el panel quede sin administradores |
 | D42 | `AuthModule` registra **y reexporta** `MongooseModule.forFeature(Usuario)` | `@UseGuards(JwtAuthGuard)` crea el guard en el contexto del módulo que declara la ruta, así que publicaciones y comentarios también necesitan `UsuarioModel`: sin la reexportación, el arranque falla con `Nest can't resolve dependencies of the JwtAuthGuard` (los unit tests no lo detectan porque mockean el guard) |
+| D43 | Las estadísticas se calculan con **agregaciones en Mongo** (`$group`) y no trayendo documentos a Node | El dashboard pide conteos, no documentos: con `aggregate` el volumen que viaja es una fila por usuario / publicación / período |
+| D44 | Las series se agrupan con `$dateToString` y `timezone: 'America/Argentina/Buenos_Aires'` | Sin `timezone` Mongo agrupa en UTC y un comentario de las 22:30 cae en el día siguiente; el TP se corrige en hora argentina |
+| D45 | Los períodos sin actividad se completan con **0** en Node (`completarSerie`) | `$group` sólo devuelve los períodos con documentos; sin este paso el gráfico de líneas saltea días y la pendiente miente |
+| D46 | Los rankings se cortan con `slice(0, limite)` después de agrupar, en vez de `$limit` | La misma agrupación da el total del encabezado: agrupar por usuario o publicación devuelve, como mucho, una fila por documento distinto |
+| D47 | `desde`/`hasta` se interpretan como días completos en Argentina (`00:00:00.000-03:00` a `23:59:59.999-03:00`) | Un rango con los dos extremos incluidos es lo que espera cualquiera que elija fechas en el calendario; además un `AAAA-MM-DD` se toma literal y no se corre de día |
 
 ---
 

@@ -6,6 +6,7 @@ import { PublicacionesModule } from './publicaciones/publicaciones.module';
 import { SaludModule } from './salud/salud.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
 import { ComentarioModule } from './comentarios/comentario.module';
+import { EstadisticasModule } from './estadisticas/estadisticas.module';
 
 @Module({
   imports: [
@@ -36,6 +37,9 @@ import { ComentarioModule } from './comentarios/comentario.module';
     // Sprint 3: comentarios. El modelo Comentario referencia a Publicacion y a
     // Usuario, ambos ya registrados por sus módulos.
     ComentarioModule,
+    // Sprint 5: dashboard de estadísticas (sólo administradores). Sólo lee las
+    // colecciones existentes con agregaciones, no define esquemas nuevos.
+    EstadisticasModule,
   ],
 })
 export class AppModule {}
