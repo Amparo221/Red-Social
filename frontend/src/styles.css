@@ -440,3 +440,31 @@ textarea.campo__control {
   text-align: center;
 }
 
+/* ---------- gráficos (Sprint 5) ---------- */
+/* Chart.js con `maintainAspectRatio: false` toma el alto del contenedor, así
+   que cada lienzo necesita una altura propia (y `relative` para el canvas). */
+.grafico-cuerpo {
+  margin: 0;
+}
+
+.grafico-cuerpo__lienzo {
+  position: relative;
+  height: 300px;
+}
+
+.grafico-cuerpo__lienzo--torta {
+  height: 320px;
+}
+
+.grafico-cuerpo__lienzo--barras {
+  height: 360px;
+}
+
+.grafico-cuerpo__pie {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+  text-align: center;
+}
+
+

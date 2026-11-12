@@ -1,0 +1,166 @@
+<section class="dashboard">
+  <header class="dashboard__encabezado">
+    <div>
+      <h1>Estadísticas</h1>
+      <p class="dashboard__bajada">
+        Actividad de toda la red en el período elegido. No se cuentan las publicaciones ni los
+        comentarios dados de baja.
+      </p>
+    </div>
+  </header>
+
+  <div class="resumen" role="group" aria-label="Totales del período">
+    <article class="tarjeta resumen__dato">
+      <span class="resumen__valor">{{ totales().publicaciones }}</span>
+      <span class="resumen__etiqueta">Publicaciones</span>
+      <span class="resumen__nota">
+        de {{ totales().usuariosConPublicaciones }}
+        {{ totales().usuariosConPublicaciones === 1 ? 'usuario' : 'usuarios' }}
+      </span>
+    </article>
+    <article class="tarjeta resumen__dato">
+      <span class="resumen__valor">{{ totales().comentarios }}</span>
+      <span class="resumen__etiqueta">Comentarios</span>
+      <span class="resumen__nota">
+        en {{ totales().publicacionesConComentarios }}
+        {{ totales().publicacionesConComentarios === 1 ? 'publicación' : 'publicaciones' }}
+      </span>
+    </article>
+  </div>
+
+  <form class="tarjeta rango" (submit)="$event.preventDefault(); actualizar()">
+    <fieldset class="rango__presets">
+      <legend class="campo__label">Período</legend>
+      @for (opcion of presets; track opcion.valor) {
+        <button
+          class="chip"
+          type="button"
+          [class.chip--activo]="esPreset(opcion.valor)"
+          [attr.aria-pressed]="esPreset(opcion.valor)"
+          (click)="elegirPreset(opcion.valor)"
+        >
+          {{ opcion.etiqueta }}
+        </button>
+      }
+      <button
+        class="chip"
+        type="button"
+        [class.chip--activo]="esPreset('personalizado')"
+        [attr.aria-pressed]="esPreset('personalizado')"
+        (click)="elegirPreset('personalizado')"
+      >
+        Personalizado
+      </button>
+    </fieldset>
+
+    <div class="rango__campos">
+      <div class="campo">
+        <label class="campo__label" for="desde">Desde</label>
+        <input
+          id="desde"
+          class="campo__control"
+          type="date"
+          [max]="hoy"
+          [value]="desde()"
+          (change)="alCambiarDesde($event)"
+        />
+      </div>
+
+      <div class="campo">
+        <label class="campo__label" for="hasta">Hasta</label>
+        <input
+          id="hasta"
+          class="campo__control"
+          type="date"
+          [max]="hoy"
+          [value]="hasta()"
+          (change)="alCambiarHasta($event)"
+        />
+      </div>
+
+      <div class="campo">
+        <label class="campo__label" for="agrupacion">Agrupar comentarios</label>
+        <select
+          id="agrupacion"
+          class="campo__control"
+          [value]="agrupacion()"
+          (change)="alCambiarAgrupacion($event)"
+        >
+          @for (opcion of agrupaciones; track opcion.valor) {
+            <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+          }
+        </select>
+      </div>
+
+      <button class="boton boton--primario rango__actualizar" type="submit" [disabled]="cargando()">
+        Actualizar
+      </button>
+    </div>
+
+    <p class="rango__texto">{{ textoRango() }}</p>
+  </form>
+
+  @if (errores().length > 0) {
+    <div class="alerta alerta--error" role="alert" aria-live="polite">
+      @if (errores().length === 1) {
+        <p>{{ errores()[0] }}</p>
+      } @else {
+        <ul>
+          @for (mensaje of errores(); track $index) {
+            <li>{{ mensaje }}</li>
+          }
+        </ul>
+      }
+      <button class="boton boton--secundario boton--chico" type="button" (click)="reintentar()">
+        Reintentar
+      </button>
+    </div>
+  } @else if (cargando()) {
+    <p class="dashboard__estado" role="status" aria-live="polite">Cargando estadísticas…</p>
+  } @else {
+    <div class="graficos">
+      <article class="tarjeta grafico">
+        <header class="grafico__encabezado">
+          <h2>Publicaciones por usuario</h2>
+          <p class="grafico__bajada">
+            Proporción de cada autor sobre el total del período
+            ({{ limite }} primeros).
+          </p>
+        </header>
+        @if (sinPublicaciones()) {
+          <p class="grafico__vacio">Nadie publicó en este período.</p>
+        } @else {
+          <app-grafico-torta [filas]="publicacionesPorUsuario()" />
+        }
+      </article>
+
+      <article class="tarjeta grafico grafico--ancho">
+        <header class="grafico__encabezado">
+          <h2>Comentarios en el tiempo</h2>
+          <p class="grafico__bajada">
+            Comentarios {{ textoAgrupacion() }}, del {{ textoRango().toLowerCase() }}.
+          </p>
+        </header>
+        @if (sinComentarios()) {
+          <p class="grafico__vacio">No hubo comentarios en este período.</p>
+        } @else {
+          <app-grafico-lineas [serie]="comentariosPorPeriodo()" />
+        }
+      </article>
+
+      <article class="tarjeta grafico grafico--ancho">
+        <header class="grafico__encabezado">
+          <h2>Comentarios por publicación</h2>
+          <p class="grafico__bajada">
+            Las publicaciones que más conversación generaron ({{ limite }} primeras).
+          </p>
+        </header>
+        @if (sinComentariosPorPublicacion()) {
+          <p class="grafico__vacio">Todavía no hay publicaciones con comentarios.</p>
+        } @else {
+          <app-grafico-barras [filas]="comentariosPorPublicacion()" />
+        }
+      </article>
+    </div>
+  }
+</section>

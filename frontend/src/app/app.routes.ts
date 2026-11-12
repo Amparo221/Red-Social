@@ -48,6 +48,16 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/dashboard/usuarios/usuarios').then((m) => m.Usuarios),
       },
+      // Sprint 5: estadísticas de la red. Cuelga del mismo padre, así que
+      // hereda los dos guards (sesión + perfil administrador).
+      {
+        path: 'estadisticas',
+        title: 'IdentiBird · Estadísticas',
+        loadComponent: () =>
+          import('./pages/dashboard/estadisticas/estadisticas').then(
+            (m) => m.Estadisticas,
+          ),
+      },
     ],
   },
   { path: '**', redirectTo: 'publicaciones' },

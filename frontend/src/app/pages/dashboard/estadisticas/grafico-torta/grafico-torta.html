@@ -1,0 +1,15 @@
+<figure class="grafico-cuerpo">
+  <div class="grafico-cuerpo__lienzo grafico-cuerpo__lienzo--torta">
+    <canvas
+      baseChart
+      [type]="'doughnut'"
+      [data]="configuracion().data"
+      [options]="configuracion().options"
+      role="img"
+      [attr.aria-label]="descripcion()"
+    ></canvas>
+  </div>
+  <figcaption class="grafico-cuerpo__pie">
+    {{ total() }} {{ total() === 1 ? 'publicación' : 'publicaciones' }} en total.
+  </figcaption>
+</figure>

@@ -1,0 +1,16 @@
+<figure class="grafico-cuerpo">
+  <div class="grafico-cuerpo__lienzo grafico-cuerpo__lienzo--barras">
+    <canvas
+      baseChart
+      [type]="'bar'"
+      [data]="configuracion().data"
+      [options]="configuracion().options"
+      role="img"
+      [attr.aria-label]="descripcion()"
+    ></canvas>
+  </div>
+  <figcaption class="grafico-cuerpo__pie">
+    {{ total() }} {{ total() === 1 ? 'comentario' : 'comentarios' }} en las
+    {{ filas().length }} publicaciones más comentadas.
+  </figcaption>
+</figure>

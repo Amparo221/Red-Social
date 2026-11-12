@@ -1,10 +1,13 @@
-# IdentiBird · Frontend (Sprint 2)
+# IdentiBird · Frontend (Sprints #2 a #5)
 
 Aplicación Angular del trabajo práctico de red social. Consume la API NestJS de
-`../backend`: registro, login y el feed de **publicaciones** (crear, listar con
-paginación/orden, dar y quitar me gusta, eliminar). No hay datos mockeados.
+`../backend`: registro, login, el feed de **publicaciones** (crear, listar con
+paginación/orden, dar y quitar me gusta, eliminar), los **comentarios**, el
+dashboard de **usuarios** y el de **estadísticas** con gráficos. No hay datos
+mockeados.
 
 - **Angular 22** (standalone components, zoneless) + **TypeScript**
+- **Chart.js 4** con **ng2-charts 11** para los gráficos del Sprint 5
 - Paleta de azules y celestes con acentos verdes claros, con el colibrí de
   `backend/assets/hummingbird.png` como icono de la app y cabecera celeste para
   que el verde del pájaro resalte
@@ -48,6 +51,7 @@ Otros comandos:
 | `/registro`      | Crear cuenta   | Formulario completo, con foto de perfil opcional y vista previa.        |
 | `/inicio`        | Mi perfil      | Datos del usuario logueado y sus publicaciones con los comentarios en sólo lectura. Protegida por `sesionGuard`. |
 | `/dashboard/usuarios` | Usuarios (administración) | Tabla de usuarios con búsqueda y filtros, alta desde el panel y baja/alta lógica. Protegida por `sesionGuard` + `adminGuard`. |
+| `/dashboard/estadisticas` | Estadísticas (administración) | Tres gráficos de la red (publicaciones por usuario, comentarios en el tiempo y comentarios por publicación) con rango de fechas y granularidad. Protegida por `sesionGuard` + `adminGuard`. |
 | `''` y `**`      | → `/publicaciones` | El guard manda a `/login` si no hay sesión, así que entrar sin cuenta termina siempre en el login. |
 
 Después del login y del registro se entra siempre a `/publicaciones`; el registro
@@ -188,19 +192,22 @@ src/
 ├─ styles.css                     paleta celeste + verde + clases base (tarjeta, campo, botón…)
 ├─ environments/                  apiUrl por entorno (fileReplacements en angular.json)
 └─ app/
-   ├─ app.ts / app.html / app.css shell: header con logo, nav (Publicaciones / Mi perfil / Usuarios / Salir) y footer
-   ├─ app.config.ts               provideRouter + provideHttpClient(withFetch(), withInterceptors([authInterceptor]))
+   ├─ app.ts / app.html / app.css shell: header con logo, nav (Publicaciones / Mi perfil / Usuarios / Estadísticas / Salir) y footer
+   ├─ app.config.ts               provideRouter + provideHttpClient(withFetch(), withInterceptors([authInterceptor])) + provideCharts(...)
    ├─ app.routes.ts               publicaciones (inicial), login, registro, inicio y dashboard (lazy) + guards
    ├─ core/
    │  ├─ models/usuario.model.ts  tipos del contrato, Sesion (usuario + token), avatar, perfil y listado de usuarios
    │  ├─ models/publicacion.model.ts tipos del feed + helpers (autorDe, nombreAutor, esAutor) y de comentarios (paginado, editado, permisos)
+   │  ├─ models/estadisticas.model.ts tipos de GET /estadisticas, presets de rango y helpers de fechas (diaLocal, rangoDePreset, agrupacionSugerida…)
    │  ├─ services/auth.service.ts registrar(), login(), cerrarSesion(), validarSesion(), refrescar(), politicaSesion()
    │  ├─ services/publicaciones.service.ts listar(), crear(), obtenerUno(), like/unlike, eliminar() + comentarios (listar paginado, crear, editar, eliminar)
    │  ├─ services/usuarios.service.ts listar(), crear() (multipart), deshabilitar(), cambiarEstado() (sólo administradores)
+   │  ├─ services/estadisticas.service.ts consultar() (rango + agrupación + límite, sólo administradores)
    │  ├─ services/sesion-timer.service.ts reloj de la sesión (exp del JWT): aviso, extender, expirar
    │  ├─ interceptors/auth.interceptor.ts Bearer del JWT + 401 → logout (sesión expirada o cuenta deshabilitada)
    │  ├─ utils/error-http.util.ts traducción de errores HTTP a mensajes
    │  ├─ utils/fecha.util.ts      "hace 5 min" para las tarjetas
+   │  ├─ utils/grafico.util.ts    configuración pura de Chart.js (torta, líneas y barras) + paleta
    │  ├─ utils/jwt.util.ts        payload del JWT: vencimiento y segundos restantes
    │  ├─ utils/imagen.util.ts     validación de la foto (tipo y 5 MB) compartida
    │  ├─ guards/sesion.guard.ts   protege /publicaciones y /inicio
@@ -215,8 +222,13 @@ src/
       ├─ login/       formulario de ingreso
       ├─ registro/    formulario de alta + subida de foto
       ├─ inicio/      perfil: datos del usuario y sus publicaciones con comentarios (sólo lectura) (+ spec)
-      └─ dashboard/usuarios/     administración: tabla, filtros y baja lógica (+ spec)
-         └─ formulario-usuario/  alta desde el panel (perfil a elección) (+ spec)
+      └─ dashboard/
+         ├─ usuarios/             administración: tabla, filtros y baja lógica (+ spec)
+         │  └─ formulario-usuario/ alta desde el panel (perfil a elección) (+ spec)
+         └─ estadisticas/         tres gráficos con rango y granularidad (+ spec)
+            ├─ grafico-torta/     publicaciones por usuario (doughnut) (+ spec)
+            ├─ grafico-lineas/    comentarios en el tiempo (line) (+ spec)
+            └─ grafico-barras/    comentarios por publicación (bar horizontal) (+ spec)
 ```
 
 ## Validaciones del compositor de publicaciones
@@ -399,6 +411,63 @@ arranca con ese aviso (`avisoDeSesion()`), distinto del de `?sesion=expirada`.
       `motivo: 'CUENTA_DESHABILITADA'` (`authInterceptor` + `avisoDeSesion`).
 - [x] Tests nuevos: `usuarios.service`, `admin.guard`, la pantalla del dashboard,
       `formulario-usuario`, el interceptor y `error-http.util`.
+
+### Dashboard de estadísticas (`/dashboard/estadisticas`, Sprint 5)
+
+Mismo esquema de acceso que el panel de usuarios: cuelga de `dashboard`, así que
+`sesionGuard` + `adminGuard` la protegen y un usuario común que escriba la URL a
+mano vuelve al feed. El backend además responde **403** en `/api/estadisticas`
+(`RolesGuard`), que es la seguridad real.
+
+| Pieza | Archivo | Qué hace |
+| ----- | ------- | -------- |
+| Pantalla | `pages/dashboard/estadisticas/estadisticas.ts` | Dueña del rango (presets de 7/30/90 días y último año, o fechas a mano), de la granularidad y de la carga |
+| Torta | `pages/dashboard/estadisticas/grafico-torta/` | `doughnut`: proporción de publicaciones por autor |
+| Serie | `pages/dashboard/estadisticas/grafico-lineas/` | `line`: comentarios por día/semana/mes |
+| Ranking | `pages/dashboard/estadisticas/grafico-barras/` | `bar` horizontal: publicaciones con más comentarios |
+| Servicio | `core/services/estadisticas.service.ts` | `consultar()` → `GET /api/estadisticas` (una sola llamada para las tres métricas) |
+| Helpers | `core/models/estadisticas.model.ts` | Presets y aritmética de fechas (`diaLocal`, `sumarDias`, `rangoDePreset`, `agrupacionSugerida`) |
+| Config de Chart.js | `core/utils/grafico.util.ts` | `configuracionTorta/Linea/Barras` + paleta. Todo puro: los tests verifican los datos sin canvas |
+
+Decisiones:
+
+- **Chart.js 4 + ng2-charts 11** con `provideCharts({ registerables })` en
+  `app.config.ts`. Se registran sólo los controladores/elementos/escalas que usan
+  los tres gráficos (torta, línea y barras + `Filler`, `Legend`, `Tooltip`): con
+  `withDefaultRegisterables()` el bundle inicial pasaba el budget de 500 kB.
+- Tres **tipos de gráfico distintos** (torta, líneas y barras) porque la consigna
+  pide variedad y cada métrica se lee mejor con uno: proporción, evolución y
+  ranking.
+- **Presets** de rango (`7 días`, `30 días`, `90 días`, `Último año`) más fechas
+  a mano. Al elegir un preset se sugiere la granularidad (≤31 días → día, ≤120 →
+  semana, más → mes); el selector permite cambiarla.
+- El rango se valida también en el navegador (`hasta >= desde`, máximo 366 días)
+  para no ir y volver por un **400**; el backend aplica las mismas reglas.
+- **Respuestas fuera de orden**: cada carga lleva un número de pedido y una
+  respuesta vieja se descarta (si no, cambiar de rango rápido dejaba el gráfico
+  con los datos anteriores).
+- Los gráficos **no** se dibujan cuando no hay datos: cada tarjeta muestra su
+  estado vacío con texto, y el `<canvas>` lleva `aria-label` con el detalle para
+  lectores de pantalla.
+- Los tests de componentes reemplazan la plantilla de cada gráfico (jsdom no
+  implementa `getContext('2d')`); la forma de los datos se testea en
+  `grafico.util.spec.ts`.
+
+## Checklist del Sprint 5
+
+- [x] Endpoint único `GET /api/estadisticas?desde&hasta&agrupacion&limite` con
+      tres agregaciones (`$group` por usuario, por período y por publicación).
+- [x] Gráficos de **torta** (publicaciones por usuario), **líneas** (comentarios
+      en el tiempo) y **barras** (comentarios por publicación) con Chart.js.
+- [x] Filtro por rango de fechas (presets + personalizado) y granularidad
+      día/semana/mes.
+- [x] Tarjetas de totales (publicaciones, comentarios y en cuántas
+      publicaciones/usuarios se reparten).
+- [x] `GET /api/estadisticas` sólo para administradores (401 sin token, 403 para
+      un usuario común, 400 con rango o granularidad inválidos).
+- [x] Link **Estadísticas** en el header sólo para administradores.
+- [x] Tests: `estadisticas.model`, `grafico.util`, `estadisticas.service`, la
+      pantalla y los tres gráficos.
 
 ## Validaciones del formulario de registro
 

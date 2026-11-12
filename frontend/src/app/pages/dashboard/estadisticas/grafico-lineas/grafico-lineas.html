@@ -1,0 +1,15 @@
+<figure class="grafico-cuerpo">
+  <div class="grafico-cuerpo__lienzo">
+    <canvas
+      baseChart
+      [type]="'line'"
+      [data]="configuracion().data"
+      [options]="configuracion().options"
+      role="img"
+      [attr.aria-label]="descripcion()"
+    ></canvas>
+  </div>
+  <figcaption class="grafico-cuerpo__pie">
+    {{ total() }} {{ total() === 1 ? 'comentario' : 'comentarios' }} en el período.
+  </figcaption>
+</figure>
