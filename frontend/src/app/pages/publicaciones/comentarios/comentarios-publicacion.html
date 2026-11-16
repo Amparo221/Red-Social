@@ -7,7 +7,9 @@
   <h2 class="comentarios__titulo">
     Comentarios
     @if (total() > 0) {
-      <span class="comentarios__total">{{ comentarios().length }} de {{ total() }}</span>
+      <span class="comentarios__total">
+        {{ comentarios().length | numero }} de {{ total() | numero }}
+      </span>
     }
   </h2>
 
@@ -49,7 +51,7 @@
               [attr.datetime]="comentario.createdAt ?? null"
               [title]="fechaCompleta(comentario.createdAt)"
             >
-              {{ fechaRelativa(comentario.createdAt) }}
+              {{ comentario.createdAt | tiempoRelativo }}
             </time>
 
             @if (yaEditado(comentario)) {
@@ -63,26 +65,30 @@
 
             @if (!soloLectura()) {
               <span class="comentario__acciones">
-                @if (puedeEditar(comentario) && !estaEditando(comentario)) {
-                  <button
-                    class="enlace-accion"
-                    type="button"
-                    [disabled]="estaEliminando(comentario.id)"
-                    (click)="comenzarEdicion(comentario)"
-                  >
-                    Editar
-                  </button>
-                }
-                @if (puedeEliminar(comentario)) {
+                <!-- Editar: sólo el autor, y nunca mientras se está editando. -->
+                <ng-container *appPuedeModerar="comentario.autor; soloAutor: true">
+                  @if (!estaEditando(comentario)) {
+                    <button
+                      class="enlace-accion"
+                      type="button"
+                      [appOcupado]="estaEliminando(comentario.id)"
+                      (click)="comenzarEdicion(comentario)"
+                    >
+                      Editar
+                    </button>
+                  }
+                </ng-container>
+                <!-- Eliminar: autor o administrador. -->
+                <ng-container *appPuedeModerar="comentario.autor">
                   <button
                     class="enlace-eliminar"
                     type="button"
-                    [disabled]="estaEliminando(comentario.id)"
+                    [appOcupado]="estaEliminando(comentario.id)"
                     (click)="eliminar(comentario)"
                   >
                     {{ estaEliminando(comentario.id) ? 'Eliminando…' : 'Eliminar' }}
                   </button>
-                }
+                </ng-container>
               </span>
             }
           </div>
@@ -97,7 +103,7 @@
                 class="comentarios__input"
                 [attr.maxlength]="maximoTexto"
                 [value]="textoEdicion()"
-                [disabled]="guardandoEdicion()"
+                [appOcupado]="guardandoEdicion()"
                 (input)="actualizarTextoEdicion($event)"
               ></textarea>
               <div class="comentario__edicion-acciones">
@@ -107,7 +113,7 @@
                 <button
                   class="boton boton--secundario boton--chico"
                   type="button"
-                  [disabled]="guardandoEdicion()"
+                  [appOcupado]="guardandoEdicion()"
                   (click)="cancelarEdicion()"
                 >
                   Cancelar
@@ -133,7 +139,7 @@
       <button
         class="boton boton--secundario boton--chico comentarios__mas"
         type="button"
-        [disabled]="cargandoMas()"
+        [appOcupado]="cargandoMas()"
         (click)="cargarMas()"
       >
         {{ cargandoMas() ? 'Cargando…' : 'Cargar más comentarios' }}
@@ -152,7 +158,7 @@
         placeholder="Escribí un comentario…"
         [attr.maxlength]="maximoTexto"
         [value]="texto()"
-        [disabled]="enviando()"
+        [appOcupado]="enviando()"
         (input)="actualizarTexto($event)"
       ></textarea>
       <button

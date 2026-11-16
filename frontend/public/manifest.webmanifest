@@ -1,0 +1,34 @@
+{
+  "name": "IdentiBird",
+  "short_name": "IdentiBird",
+  "description": "Red social para compartir avistajes de aves: registrate, publicá fotos y reaccioná a las de la comunidad.",
+  "lang": "es-AR",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f0f9ff",
+  "theme_color": "#0ea5e9",
+  "categories": ["social", "photo", "lifestyle"],
+  "icons": [
+    {
+      "src": "identibird-32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "identibird-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "identibird.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

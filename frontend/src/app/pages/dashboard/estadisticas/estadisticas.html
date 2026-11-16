@@ -11,18 +11,18 @@
 
   <div class="resumen" role="group" aria-label="Totales del período">
     <article class="tarjeta resumen__dato">
-      <span class="resumen__valor">{{ totales().publicaciones }}</span>
+      <span class="resumen__valor">{{ totales().publicaciones | numero }}</span>
       <span class="resumen__etiqueta">Publicaciones</span>
       <span class="resumen__nota">
-        de {{ totales().usuariosConPublicaciones }}
+        de {{ totales().usuariosConPublicaciones | numero }}
         {{ totales().usuariosConPublicaciones === 1 ? 'usuario' : 'usuarios' }}
       </span>
     </article>
     <article class="tarjeta resumen__dato">
-      <span class="resumen__valor">{{ totales().comentarios }}</span>
+      <span class="resumen__valor">{{ totales().comentarios | numero }}</span>
       <span class="resumen__etiqueta">Comentarios</span>
       <span class="resumen__nota">
-        en {{ totales().publicacionesConComentarios }}
+        en {{ totales().publicacionesConComentarios | numero }}
         {{ totales().publicacionesConComentarios === 1 ? 'publicación' : 'publicaciones' }}
       </span>
     </article>

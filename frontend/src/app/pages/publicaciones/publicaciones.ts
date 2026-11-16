@@ -7,8 +7,6 @@ import {
   type OrdenPublicaciones,
   type Publicacion,
 } from '../../core/models/publicacion.model';
-import { esAdministrador } from '../../core/models/usuario.model';
-import { AuthService } from '../../core/services/auth.service';
 import { PublicacionesService } from '../../core/services/publicaciones.service';
 import { mensajesDeError } from '../../core/utils/error-http.util';
 import { Compositor } from './compositor/compositor';
@@ -29,13 +27,8 @@ import { PublicacionCard } from './publicacion-card/publicacion-card';
 })
 export class Publicaciones implements OnInit {
   private readonly publicacionesService = inject(PublicacionesService);
-  private readonly auth = inject(AuthService);
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
-
-  protected readonly usuario = this.auth.usuarioActual;
-  protected readonly idUsuario = computed(() => this.usuario()?.id ?? null);
-  protected readonly esAdministrador = computed(() => esAdministrador(this.usuario()));
 
   protected readonly publicaciones = signal<Publicacion[]>([]);
   protected readonly total = signal(0);

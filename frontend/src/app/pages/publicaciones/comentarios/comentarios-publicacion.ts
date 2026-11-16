@@ -1,19 +1,22 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, inject, input, signal } from '@angular/core';
+import { OcupadoDirective } from '../../../core/directives/ocupado.directive';
+import { PuedeModerarDirective } from '../../../core/directives/puede-moderar.directive';
 import {
   COMENTARIOS_POR_PAGINA,
   MAXIMO_TEXTO_COMENTARIO,
   autorComentarioDe,
-  esAutorComentario,
   estaEditado,
   nombreAutorComentario,
   puedeEditarComentario,
   type Comentario,
 } from '../../../core/models/publicacion.model';
-import { esAdministrador, urlAvatar } from '../../../core/models/usuario.model';
+import { urlAvatar } from '../../../core/models/usuario.model';
+import { NumeroPipe } from '../../../core/pipes/numero.pipe';
+import { TiempoRelativoPipe } from '../../../core/pipes/tiempo-relativo.pipe';
 import { AuthService } from '../../../core/services/auth.service';
 import { PublicacionesService } from '../../../core/services/publicaciones.service';
 import { mensajesDeError } from '../../../core/utils/error-http.util';
-import { fechaCompleta, fechaRelativa } from '../../../core/utils/fecha.util';
+import { fechaCompleta } from '../../../core/utils/fecha.util';
 
 /**
  * Comentarios de una publicación (Sprint 4).
@@ -25,9 +28,13 @@ import { fechaCompleta, fechaRelativa } from '../../../core/utils/fecha.util';
  *  - detalle (`soloLectura` = false): todo habilitado;
  *  - perfil (`soloLectura` = true): sólo la lista paginada, sin formulario ni
  *    acciones, porque el perfil es una vista de resumen.
+ *
+ * Sprint 6: quién ve "Editar" y "Eliminar" lo deciden las directivas
+ * `*appPuedeModerar` (con `soloAutor` para editar), no métodos del componente.
  */
 @Component({
   selector: 'app-comentarios',
+  imports: [PuedeModerarDirective, OcupadoDirective, TiempoRelativoPipe, NumeroPipe],
   templateUrl: './comentarios-publicacion.html',
   styleUrl: './comentarios-publicacion.css',
 })
@@ -44,9 +51,6 @@ export class ComentariosPublicacion {
 
   private readonly publicacionesService = inject(PublicacionesService);
   private readonly auth = inject(AuthService);
-
-  protected readonly usuario = this.auth.usuarioActual;
-  protected readonly esAdministrador = computed(() => esAdministrador(this.usuario()));
 
   protected readonly comentarios = signal<Comentario[]>([]);
   protected readonly total = signal(0);
@@ -260,14 +264,9 @@ export class ComentariosPublicacion {
     });
   }
 
-  /** El backend deja borrar al autor del comentario o a un administrador. */
-  protected puedeEliminar(comentario: Comentario): boolean {
-    return esAutorComentario(comentario, this.usuario()?.id, this.esAdministrador());
-  }
-
-  /** Editar es más restrictivo: sólo el autor. */
+  /** Editar es más restrictivo: sólo el autor (guarda defensiva del editor). */
   protected puedeEditar(comentario: Comentario): boolean {
-    return puedeEditarComentario(comentario, this.usuario()?.id);
+    return puedeEditarComentario(comentario, this.auth.usuarioActual()?.id);
   }
 
   protected estaEditando(comentario: Comentario): boolean {
@@ -297,8 +296,7 @@ export class ComentariosPublicacion {
     return autorComentarioDe(comentario)?.nombreUsuario ?? '';
   }
 
-  // Expone las utilidades de fecha al template.
-  protected readonly fechaRelativa = fechaRelativa;
+  // Expone la utilidad de fecha larga (tooltip) al template.
   protected readonly fechaCompleta = fechaCompleta;
 
   private marcarEliminando(comentarioId: string, eliminando: boolean): void {

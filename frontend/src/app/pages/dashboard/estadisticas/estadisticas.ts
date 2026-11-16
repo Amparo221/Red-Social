@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { provideCharts } from 'ng2-charts';
 import {
   AGRUPACIONES,
   ESTADISTICAS_LIMITE,
@@ -19,11 +20,13 @@ import {
   type PublicacionesPorUsuario,
   type TotalesEstadisticas,
 } from '../../../core/models/estadisticas.model';
+import { NumeroPipe } from '../../../core/pipes/numero.pipe';
 import { EstadisticasService } from '../../../core/services/estadisticas.service';
 import { mensajesDeError } from '../../../core/utils/error-http.util';
 import { GraficoBarras } from './grafico-barras/grafico-barras';
 import { GraficoLineas } from './grafico-lineas/grafico-lineas';
 import { GraficoTorta } from './grafico-torta/grafico-torta';
+import { GRAFICOS_USADOS } from './graficos';
 
 const TOTALES_VACIOS: TotalesEstadisticas = {
   publicaciones: 0,
@@ -39,10 +42,14 @@ const TOTALES_VACIOS: TotalesEstadisticas = {
  * La pantalla es la dueña del rango y de la granularidad; los tres gráficos son
  * hijos "tontos" que reciben las filas ya calculadas. Toda la matemática de
  * Chart.js vive en `core/utils/grafico.util.ts` para poder testearla sin canvas.
+ *
+ * Sprint 6: Chart.js se registra acá (y no en `app.config.ts`) para que quede en
+ * el chunk diferido de esta pantalla, que sólo abre un administrador.
  */
 @Component({
   selector: 'app-estadisticas',
-  imports: [GraficoTorta, GraficoLineas, GraficoBarras],
+  imports: [GraficoTorta, GraficoLineas, GraficoBarras, NumeroPipe],
+  providers: [provideCharts({ registerables: GRAFICOS_USADOS })],
   templateUrl: './estadisticas.html',
   styleUrl: './estadisticas.css',
 })

@@ -1,13 +1,14 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import {
-  autorDe,
-  esAutor,
-  nombreAutor,
-  type Publicacion,
-} from '../../../core/models/publicacion.model';
+import { ClicFueraDirective } from '../../../core/directives/clic-fuera.directive';
+import { OcupadoDirective } from '../../../core/directives/ocupado.directive';
+import { PuedeModerarDirective } from '../../../core/directives/puede-moderar.directive';
+import { autorDe, nombreAutor, type Publicacion } from '../../../core/models/publicacion.model';
 import { urlAvatar } from '../../../core/models/usuario.model';
-import { fechaCompleta, fechaRelativa } from '../../../core/utils/fecha.util';
+import { NumeroPipe } from '../../../core/pipes/numero.pipe';
+import { TiempoRelativoPipe } from '../../../core/pipes/tiempo-relativo.pipe';
+import { TruncarDescripcionPipe } from '../../../core/pipes/truncar-descripcion.pipe';
+import { fechaCompleta } from '../../../core/utils/fecha.util';
 
 /**
  * Tarjeta de una publicación del feed.
@@ -15,18 +16,26 @@ import { fechaCompleta, fechaRelativa } from '../../../core/utils/fecha.util';
  * Es de presentación: no llama al backend. Avisa con `meGusta` / `eliminar` /
  * `abrir` y la página decide (like optimista con rollback, borrado en dos
  * pasos, navegación al detalle).
+ *
+ * Desde el Sprint 6 no recibe `idUsuario`/`esAdministrador`: quién puede borrar
+ * lo decide la directiva `*appPuedeModerar`, que lee la sesión por su cuenta.
  */
 @Component({
   selector: 'app-publicacion-card',
-  imports: [RouterLink],
+  imports: [
+    RouterLink,
+    PuedeModerarDirective,
+    OcupadoDirective,
+    ClicFueraDirective,
+    TruncarDescripcionPipe,
+    TiempoRelativoPipe,
+    NumeroPipe,
+  ],
   templateUrl: './publicacion-card.html',
   styleUrl: './publicacion-card.css',
 })
 export class PublicacionCard {
   readonly publicacion = input.required<Publicacion>();
-  /** Id del usuario de la sesión: con eso se decide si puede borrar. */
-  readonly idUsuario = input<string | null>(null);
-  readonly esAdministrador = input(false);
   /** true mientras hay un like o un borrado en curso para esta publicación. */
   readonly ocupada = input(false);
 
@@ -41,11 +50,7 @@ export class PublicacionCard {
   protected readonly autor = computed(() => autorDe(this.publicacion()));
   protected readonly nombre = computed(() => nombreAutor(this.publicacion()));
   protected readonly avatar = computed(() => urlAvatar(this.autor()));
-  protected readonly fecha = computed(() => fechaRelativa(this.publicacion().createdAt));
   protected readonly fechaTooltip = computed(() => fechaCompleta(this.publicacion().createdAt));
-  protected readonly puedeEliminar = computed(
-    () => esAutor(this.publicacion(), this.idUsuario()) || this.esAdministrador(),
-  );
 
   protected pedirConfirmacion(): void {
     this.confirmando.set(true);

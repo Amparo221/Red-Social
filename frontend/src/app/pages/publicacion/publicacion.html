@@ -56,19 +56,19 @@
             <span aria-hidden="true">·</span>
           }
           <time [attr.datetime]="p.createdAt ?? null" [title]="fechaCompleta(p.createdAt)">
-            {{ fechaRelativa(p.createdAt) }}
+            {{ p.createdAt | tiempoRelativo }}
           </time>
         </p>
       </div>
 
-      @if (puedeEliminar()) {
+      <ng-container *appPuedeModerar="p.usuario">
         @if (confirmandoBorrado()) {
-          <div class="publicacion__confirmacion">
+          <div class="publicacion__confirmacion" (appClicFuera)="cancelarBorrado()">
             <span class="publicacion__pregunta">¿Eliminar esta publicación?</span>
             <button
               class="boton boton--peligro boton--chico"
               type="button"
-              [disabled]="borrando()"
+              [appOcupado]="borrando()"
               (click)="confirmarBorrado()"
             >
               {{ borrando() ? 'Eliminando…' : 'Sí, borrar' }}
@@ -76,7 +76,7 @@
             <button
               class="boton boton--secundario boton--chico"
               type="button"
-              [disabled]="borrando()"
+              [appOcupado]="borrando()"
               (click)="cancelarBorrado()"
             >
               No
@@ -86,13 +86,13 @@
           <button
             class="enlace-eliminar"
             type="button"
-            [disabled]="borrando()"
+            [appOcupado]="borrando()"
             (click)="pedirConfirmacion()"
           >
             Eliminar
           </button>
         }
-      }
+      </ng-container>
     </header>
 
     <h1 class="publicacion__titulo">{{ p.titulo }}</h1>
@@ -125,12 +125,12 @@
         type="button"
         [class.me-gusta--activo]="p.likeado"
         [attr.aria-pressed]="p.likeado"
-        [attr.aria-label]="'Me gusta (' + p.cantidadLikes + ')'"
-        [disabled]="likeEnCurso()"
+        [attr.aria-label]="'Me gusta (' + (p.cantidadLikes | numero) + ')'"
+        [appOcupado]="likeEnCurso()"
         (click)="alternarLike()"
       >
         <span class="me-gusta__icono" aria-hidden="true">{{ p.likeado ? '♥' : '♡' }}</span>
-        <span class="me-gusta__contador">{{ p.cantidadLikes }}</span>
+        <span class="me-gusta__contador">{{ p.cantidadLikes | numero }}</span>
       </button>
     </footer>
 

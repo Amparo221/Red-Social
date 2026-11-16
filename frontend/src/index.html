@@ -10,6 +10,14 @@
       content="IdentiBird, la red social para compartir avistajes de aves: registrate, publicá fotos y reaccioná a las de la comunidad."
     />
     <meta name="theme-color" content="#0ea5e9" />
+    <!-- PWA (Sprint 6): el manifest y los metadatos que usan Android/iOS para
+         instalar la app en la pantalla de inicio. El service worker se registra
+         sólo en el build de producción (ver app.config.ts). -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="IdentiBird" />
     <!-- Icono de la app: el colibrí de IdentiBird, derivado de backend/assets/hummingbird.png.
          El PNG de 32 px es el que usan los navegadores viejos y el de 180 el apple-touch-icon. -->
     <link rel="icon" type="image/png" sizes="32x32" href="identibird-32.png" />

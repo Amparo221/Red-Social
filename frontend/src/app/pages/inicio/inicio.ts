@@ -4,7 +4,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { PublicacionesService } from '../../core/services/publicaciones.service';
 import { PublicacionCard } from '../publicaciones/publicacion-card/publicacion-card';
 import { ComentariosPublicacion } from '../publicaciones/comentarios/comentarios-publicacion';
-import { urlAvatar, esAdministrador } from '../../core/models/usuario.model';
+import { urlAvatar } from '../../core/models/usuario.model';
 import { mensajesDeError } from '../../core/utils/error-http.util';
 import type { Publicacion, FiltrosPublicaciones } from '../../core/models/publicacion.model';
 
@@ -21,8 +21,6 @@ export class Inicio {
 
   protected readonly usuario = this.auth.usuarioActual;
   protected readonly avatar = computed(() => urlAvatar(this.usuario()));
-  protected readonly esAdministrador = computed(() => esAdministrador(this.usuario()));
-  protected readonly idUsuario = computed(() => this.usuario()?.id ?? null);
 
   protected readonly fechaNacimiento = computed(() => this.formatearFecha(this.usuario()?.fechaNacimiento));
   protected readonly miembroDesde = computed(() => this.formatearFecha(this.usuario()?.createdAt));

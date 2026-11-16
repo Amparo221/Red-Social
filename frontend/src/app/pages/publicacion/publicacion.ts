@@ -1,29 +1,40 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { ClicFueraDirective } from '../../core/directives/clic-fuera.directive';
+import { OcupadoDirective } from '../../core/directives/ocupado.directive';
+import { PuedeModerarDirective } from '../../core/directives/puede-moderar.directive';
 import {
   autorDe,
-  esAutor,
   nombreAutor as nombreAutorDe,
   type Publicacion as PublicacionModel,
 } from '../../core/models/publicacion.model';
-import { esAdministrador, urlAvatar } from '../../core/models/usuario.model';
-import { AuthService } from '../../core/services/auth.service';
+import { urlAvatar } from '../../core/models/usuario.model';
+import { NumeroPipe } from '../../core/pipes/numero.pipe';
+import { TiempoRelativoPipe } from '../../core/pipes/tiempo-relativo.pipe';
 import { PublicacionesService } from '../../core/services/publicaciones.service';
 import { ComentariosPublicacion } from '../publicaciones/comentarios/comentarios-publicacion';
 import { mensajesDeError } from '../../core/utils/error-http.util';
-import { fechaCompleta, fechaRelativa } from '../../core/utils/fecha.util';
+import { fechaCompleta } from '../../core/utils/fecha.util';
 
 /**
  * Pantalla de detalle de una publicación (Sprint 3).
  *
  * Muestra una publicación individual con sus datos completos, el botón de me
- * gusta y el de eliminar (solo autor o administrador). Los comentarios viven en
+ * gusta y el de eliminar (solo autor o administrador, resuelto por
+ * `*appPuedeModerar` desde el Sprint 6). Los comentarios viven en
  * `ComentariosPublicacion` (Sprint 4), el mismo componente que usa el perfil:
  * así la paginación, la edición y el borrado se mantienen en un solo lugar.
  */
 @Component({
   selector: 'app-publicacion',
-  imports: [ComentariosPublicacion],
+  imports: [
+    ComentariosPublicacion,
+    PuedeModerarDirective,
+    OcupadoDirective,
+    ClicFueraDirective,
+    TiempoRelativoPipe,
+    NumeroPipe,
+  ],
   templateUrl: './publicacion.html',
   styleUrl: './publicacion.css',
 })
@@ -31,10 +42,6 @@ export class Publicacion {
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly publicacionesService = inject(PublicacionesService);
-  private readonly auth = inject(AuthService);
-
-  protected readonly usuario = this.auth.usuarioActual;
-  protected readonly esAdministrador = computed(() => esAdministrador(this.usuario()));
 
   protected readonly publicacion = signal<PublicacionModel | null>(null);
   protected readonly cargando = signal(true);
@@ -62,8 +69,7 @@ export class Publicacion {
   protected readonly confirmandoBorrado = signal(false);
   protected readonly borrando = signal(false);
 
-  // Expone las utilidades de fecha al template.
-  protected readonly fechaRelativa = fechaRelativa;
+  // Expone la utilidad de fecha larga (tooltip) al template.
   protected readonly fechaCompleta = fechaCompleta;
 
   ngOnInit(): void {
@@ -177,16 +183,6 @@ export class Publicacion {
         this.errores.set(mensajesDeError(error, 'sesion'));
       },
     });
-  }
-
-  /** Devuelve true si el usuario de la sesión puede eliminar esta publicación. */
-  protected puedeEliminar(): boolean {
-    const p = this.publicacion();
-    if (!p) {
-      return false;
-    }
-
-    return esAutor(p, this.usuario()?.id) || this.esAdministrador();
   }
 
   /** Vuelve al feed. */

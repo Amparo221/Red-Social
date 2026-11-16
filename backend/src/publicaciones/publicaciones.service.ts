@@ -118,12 +118,14 @@ export class PublicacionesService {
     // La baja es lógica: el filtro por `eliminado` no es opcional.
     const filtro: FiltroPublicaciones = { eliminado: false };
 
+    //lista por usuario si se pasa el id del usuario en la query
     if (listarDto.usuario) {
       filtro.usuario = new Types.ObjectId(listarDto.usuario);
     }
 
     // Las dos consultas van en paralelo: el total para paginar y la página.
     const [total, documentos] = await Promise.all([
+      //cuenta cuantas publicaciones hay en total (para saber cuantas paginas hay)
       this.publicacionModel.countDocuments(filtro),
       this.publicacionModel
         .find(filtro)
@@ -147,6 +149,23 @@ export class PublicacionesService {
   }
 
   /**
+   * GET /publicaciones/:id: detalle de una publicación (Sprint 3).
+   * Devuelve 404 si no existe o fue eliminada.
+   */
+  async obtenerUno(id: string, idUsuarioActual?: string) {
+    const publicacion = await this.publicacionModel
+      .findOne({ _id: id, eliminado: false })
+      .populate('usuario', CAMPOS_AUTOR)
+      .exec();
+
+    if (!publicacion) {
+      throw new NotFoundException(NO_EXISTE);
+    }
+
+    return toPublicacionResponse(publicacion, idUsuarioActual);
+  }
+
+  /**
    * POST /publicaciones/:id/like.
    *
    * Todo se resuelve en una sola operación atómica: el filtro
@@ -159,7 +178,9 @@ export class PublicacionesService {
     usuario: UsuarioAutenticado,
   ): Promise<ResultadoLike> {
     const actualizada = await this.publicacionModel
+      //es atomico, si llegan dos peticiones dr like al mismo tiempo, mongo boquea el domento y procesa de a una
       .findOneAndUpdate(
+        //revisa si el id del usuario ya esta en el array(ya le dio like)
         { _id: id, eliminado: false, likes: { $ne: usuario.id } },
         { $addToSet: { likes: usuario.id }, $inc: { cantidadLikes: 1 } },
         { new: true },
@@ -202,22 +223,7 @@ export class PublicacionesService {
     return { id, cantidadLikes: actualizada.cantidadLikes, likeado: false };
   }
 
-  /**
-   * GET /publicaciones/:id: detalle de una publicación (Sprint 3).
-   * Devuelve 404 si no existe o fue eliminada.
-   */
-  async obtenerUno(id: string, idUsuarioActual?: string) {
-    const publicacion = await this.publicacionModel
-      .findOne({ _id: id, eliminado: false })
-      .populate('usuario', CAMPOS_AUTOR)
-      .exec();
-
-    if (!publicacion) {
-      throw new NotFoundException(NO_EXISTE);
-    }
-
-    return toPublicacionResponse(publicacion, idUsuarioActual);
-  }
+  
 
   /**
    * DELETE /publicaciones/:id: baja lógica. Sólo el autor o un administrador.
@@ -234,6 +240,7 @@ export class PublicacionesService {
       throw new NotFoundException(NO_EXISTE);
     }
 
+    //revisa que sea el autor de la publicacion o un admin antes de dejarlo eliminar
     const esAutor = String(publicacion.usuario) === usuario.id;
     if (!esAutor && usuario.perfil !== 'administrador') {
       throw new ForbiddenException(
@@ -241,7 +248,7 @@ export class PublicacionesService {
       );
     }
 
-    // Baja lógica: no se borra el documento, se marca y se guarda la fecha.
+    //no se borra, se cambia el estado a eliminado y se guarda la fecha de eliminacion
     publicacion.eliminado = true;
     publicacion.fechaEliminacion = new Date();
     await publicacion.save();

@@ -1,13 +1,18 @@
-# IdentiBird · Frontend (Sprints #2 a #5)
+# IdentiBird · Frontend (Sprints #2 a #6)
 
 Aplicación Angular del trabajo práctico de red social. Consume la API NestJS de
 `../backend`: registro, login, el feed de **publicaciones** (crear, listar con
 paginación/orden, dar y quitar me gusta, eliminar), los **comentarios**, el
 dashboard de **usuarios** y el de **estadísticas** con gráficos. No hay datos
-mockeados.
+mockeados. Desde el Sprint 6 es una **PWA instalable** que abre sin conexión, y
+los permisos/fechas/textos repetidos se resuelven con **pipes** y **directivas**
+propias.
 
 - **Angular 22** (standalone components, zoneless) + **TypeScript**
+- **PWA**: `@angular/service-worker` + manifest (Sprint 6)
 - **Chart.js 4** con **ng2-charts 11** para los gráficos del Sprint 5
+- **3 pipes** (`truncarDescripcion`, `tiempoRelativo`, `numero`) y **3 directivas**
+  (`*appPuedeModerar`, `[appOcupado]`, `[appClicFuera]`) propias (Sprint 6)
 - Paleta de azules y celestes con acentos verdes claros, con el colibrí de
   `backend/assets/hummingbird.png` como icono de la app y cabecera celeste para
   que el verde del pájaro resalte
@@ -40,6 +45,11 @@ Otros comandos:
 | `npm start`     | servidor de desarrollo con recarga en `http://localhost:4200`  |
 | `npm run build` | build de producción en `dist/frontend`                         |
 | `npm test`      | tests unitarios con Vitest                                     |
+
+El service worker y el manifest sólo se generan en el build de producción
+(`npm run build`); `ng serve` los deja apagados para no servir bundles viejos.
+Para probar la PWA hay que servir `dist/frontend/browser` (por ejemplo con
+`npx http-server`), porque el service worker exige HTTPS o `localhost`.
 
 ## Pantallas y rutas
 
@@ -188,12 +198,12 @@ El splash muestra la marca en **texto** (`Identi` + `Bird`) y usa
 
 ```
 src/
-├─ index.html                     favicon (identibird-32.png / identibird.png) y <title>IdentiBird</title>
+├─ index.html                     manifest PWA, iconos (identibird-32.png / identibird.png) y <title>IdentiBird</title>
 ├─ styles.css                     paleta celeste + verde + clases base (tarjeta, campo, botón…)
 ├─ environments/                  apiUrl por entorno (fileReplacements en angular.json)
 └─ app/
    ├─ app.ts / app.html / app.css shell: header con logo, nav (Publicaciones / Mi perfil / Usuarios / Estadísticas / Salir) y footer
-   ├─ app.config.ts               provideRouter + provideHttpClient(withFetch(), withInterceptors([authInterceptor])) + provideCharts(...)
+   ├─ app.config.ts               provideRouter + provideHttpClient(withFetch(), withInterceptors([authInterceptor])) + provideServiceWorker
    ├─ app.routes.ts               publicaciones (inicial), login, registro, inicio y dashboard (lazy) + guards
    ├─ core/
    │  ├─ models/usuario.model.ts  tipos del contrato, Sesion (usuario + token), avatar, perfil y listado de usuarios
@@ -205,6 +215,12 @@ src/
    │  ├─ services/estadisticas.service.ts consultar() (rango + agrupación + límite, sólo administradores)
    │  ├─ services/sesion-timer.service.ts reloj de la sesión (exp del JWT): aviso, extender, expirar
    │  ├─ interceptors/auth.interceptor.ts Bearer del JWT + 401 → logout (sesión expirada o cuenta deshabilitada)
+   │  ├─ pipes/truncar-descripcion.pipe.ts recorta la descripción cuando la tarjeta muestra foto (Sprint 6)
+   │  ├─ pipes/tiempo-relativo.pipe.ts "hace 5 min" / "ayer" en las plantillas (Sprint 6)
+   │  ├─ pipes/numero.pipe.ts      contadores con separador de miles (Sprint 6)
+   │  ├─ directives/puede-moderar.directive.ts *appPuedeModerar: autor o administrador (Sprint 6)
+   │  ├─ directives/ocupado.directive.ts [appOcupado]: disabled + aria-busy con un pedido en vuelo (Sprint 6)
+   │  ├─ directives/clic-fuera.directive.ts [appClicFuera]: cierra la confirmación al clickear afuera o con Escape (Sprint 6)
    │  ├─ utils/error-http.util.ts traducción de errores HTTP a mensajes
    │  ├─ utils/fecha.util.ts      "hace 5 min" para las tarjetas
    │  ├─ utils/grafico.util.ts    configuración pura de Chart.js (torta, líneas y barras) + paleta
@@ -431,10 +447,12 @@ mano vuelve al feed. El backend además responde **403** en `/api/estadisticas`
 
 Decisiones:
 
-- **Chart.js 4 + ng2-charts 11** con `provideCharts({ registerables })` en
+- **Chart.js 4 + ng2-charts 11** con `provideCharts({ registerables })`, pero
+  registrado en el componente `Estadisticas` (ruta diferida) y no en
   `app.config.ts`. Se registran sólo los controladores/elementos/escalas que usan
   los tres gráficos (torta, línea y barras + `Filler`, `Legend`, `Tooltip`): con
-  `withDefaultRegisterables()` el bundle inicial pasaba el budget de 500 kB.
+  `withDefaultRegisterables()` el bundle inicial pasaba el budget de 500 kB, y al
+  quedar en el chunk del dashboard (Sprint 6) el feed arranca con ~300 kB.
 - Tres **tipos de gráfico distintos** (torta, líneas y barras) porque la consigna
   pide variedad y cada métrica se lee mejor con uno: proporción, evolución y
   ranking.
@@ -468,6 +486,73 @@ Decisiones:
 - [x] Link **Estadísticas** en el header sólo para administradores.
 - [x] Tests: `estadisticas.model`, `grafico.util`, `estadisticas.service`, la
       pantalla y los tres gráficos.
+
+## Sprint 6 · PWA, pipes y directivas
+
+### PWA (instalable y offline)
+
+| Pieza | Archivo | Qué hace |
+| ----- | ------- | -------- |
+| Manifest | `public/manifest.webmanifest` | `name`, `short_name`, iconos 32/180/512, `display: standalone`, `start_url: /` y los colores de la paleta |
+| Config del service worker | `ngsw-config.json` | Grupos de assets (shell precargado, imágenes on-demand) y caché de fotos de Cloudinary |
+| Build | `angular.json` → `configurations.production.serviceWorker` | Emite `ngsw-worker.js` + `ngsw.json` junto con `manifest.webmanifest` |
+| Registro | `app.config.ts` | `provideServiceWorker('ngsw-worker.js', { enabled: environment.produccion, registrationStrategy: 'registerWhenStable:30000' })` |
+| Metadatos | `src/index.html` | `<link rel="manifest">` + `apple-mobile-web-app-*` |
+
+- **`installMode: prefetch`** para el shell (HTML, CSS, JS e iconos): el primer
+  arranque deja la app completa en caché y el siguiente abre sin red.
+- **Imágenes** en `lazy` con `updateMode: prefetch`: se cachean al usarlas.
+- **Sólo Cloudinary** en `dataGroups` (`https://res.cloudinary.com/**`,
+  `strategy: performance`, 100 entradas, 7 días). **`/api` no se cachea nunca**:
+  el feed, los permisos y las estadísticas tienen que venir siempre del backend,
+  y el `authInterceptor` necesita ver los 401/403 reales.
+- En desarrollo el service worker está **apagado** (`enabled: environment.produccion`)
+  para no servir bundles viejos con `ng serve`. Para probarlo: `npm run build` y
+  servir `dist/frontend/browser` (por ejemplo con `npx http-server`), porque el
+  service worker exige HTTPS o `localhost`.
+
+### Pipes (`core/pipes/`)
+
+| Pipe | Uso | Regla |
+| ---- | --- | ----- |
+| `truncarDescripcion` | `{{ descripcion \| truncarDescripcion: !!imagenUrl }}` | Recorta a `LIMITE_DESCRIPCION_CON_IMAGEN` (70) **sólo si la publicación tiene foto**, corta en el último espacio y agrega `…`. Sin imagen, o si el texto entra, se muestra completo; el detalle siempre muestra todo |
+| `tiempoRelativo` | `{{ publicacion().createdAt \| tiempoRelativo }}` | Envuelve `fechaRelativa()` de `utils/fecha.util.ts`; reemplaza los métodos que se exponían en las plantillas |
+| `numero` | `{{ cantidadLikes \| numero }}` | `Intl.NumberFormat('es-AR')`: 1234 → 1.234 (contadores y totales del dashboard) |
+
+### Directivas (`core/directives/`)
+
+| Directiva | Uso | Qué hace |
+| --------- | --- | -------- |
+| `*appPuedeModerar` | `*appPuedeModerar="publicacion().usuario"`<br>`*appPuedeModerar="comentario.autor; soloAutor: true"` | Estructural: muestra el bloque sólo si la sesión es el autor **o** administrador. Con `soloAutor` (editar comentarios) el administrador queda afuera. Lee `AuthService.usuarioActual()` por su cuenta y reacciona a login/logout |
+| `[appOcupado]` | `[appOcupado]="enviando()"` | Host bindings: `attr.disabled` + `aria-busy` mientras hay un pedido en vuelo (antes sólo cambiaba el texto del botón, que un lector de pantalla no anuncia) |
+| `[appClicFuera]` | `(appClicFuera)="cancelar()"` | Emite cuando el click cae fuera del host o se presiona Escape. Escucha `pointerdown` (no `click`) y así no se cierra con el mismo gesto que la abrió |
+
+Consecuencias en los componentes:
+
+- `PublicacionCard` ya **no** recibe `idUsuario` ni `esAdministrador`: la
+  plantilla usa `*appPuedeModerar` y el componente quedó más chico (el feed y el
+  perfil dejaron de pasar esos inputs).
+- `Publicacion` y `ComentariosPublicacion` perdieron `puedeEliminar()`;
+  `puedeEditar()` queda sólo como guarda defensiva de `comenzarEdicion()`.
+- Las confirmaciones de borrado se cancelan clickeando afuera o con Escape.
+
+## Checklist del Sprint 6
+
+- [x] `@angular/service-worker` + `ngsw-config.json` + manifest web y metadatos
+      de instalación.
+- [x] El build de producción emite `ngsw-worker.js`, `ngsw.json` y
+      `manifest.webmanifest`, con el bundle inicial en ~300 kB (debajo del budget
+      de 500 kB).
+- [x] Caché: shell precargado, imágenes on-demand y fotos de Cloudinary;
+      **`/api` fuera del service worker**.
+- [x] Pipe `truncarDescripcion` (descripción + foto) con tests de largo, corte en
+      palabras y textos sin imagen.
+- [x] Pipes `tiempoRelativo` y `numero` usados en tarjetas, detalle, comentarios
+      y totales del dashboard.
+- [x] Directiva `*appPuedeModerar` con `soloAutor` y tests de autor,
+      administrador, otro usuario, login y logout.
+- [x] Directivas `[appOcupado]` y `[appClicFuera]` con tests.
+- [x] Chart.js movido al chunk diferido del dashboard para no cargarlo en el feed.
 
 ## Validaciones del formulario de registro
 

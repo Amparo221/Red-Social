@@ -1,49 +1,10 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import {
-  ArcElement,
-  BarController,
-  BarElement,
-  CategoryScale,
-  DoughnutController,
-  Filler,
-  Legend,
-  LinearScale,
-  LineController,
-  LineElement,
-  PointElement,
-  Tooltip,
-  type ChartComponentLike,
-} from 'chart.js';
-import { provideCharts } from 'ng2-charts';
+import { provideServiceWorker } from '@angular/service-worker';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { routes } from './app.routes';
-
-/**
- * Sólo lo que dibuja el dashboard de estadísticas (Sprint 5). Con
- * `withDefaultRegisterables()` se empaquetan también radar, burbujas y escalas
- * que la app no usa, y el bundle inicial se pasaba del budget de 500 kB.
- *
- * - controllers: doughnut (torta), line (serie) y bar (ranking),
- * - elements: arco, barra, línea y punto,
- * - scales: categorías (eje X) y lineal (eje Y),
- * - plugins: relleno del área bajo la línea, leyenda y tooltips.
- */
-const GRAFICOS_USADOS: ChartComponentLike[] = [
-  ArcElement,
-  BarElement,
-  LineElement,
-  PointElement,
-  BarController,
-  DoughnutController,
-  LineController,
-  CategoryScale,
-  LinearScale,
-  Filler,
-  Legend,
-  Tooltip,
-];
+import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -53,8 +14,16 @@ export const appConfig: ApplicationConfig = {
     // explota al abrir la pantalla de login. `withFetch` usa la Fetch API y
     // `withInterceptors` engancha el Bearer del JWT (las rutas del feed lo exigen).
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
-    // Chart.js necesita registrar controladores/escalas antes de crear el
-    // primer gráfico. Se registran una sola vez, acá.
-    provideCharts({ registerables: GRAFICOS_USADOS }),
+    // PWA (Sprint 6): el service worker cachea el shell y las fotos de
+    // Cloudinary para que la app abra sin conexión. En desarrollo queda apagado
+    // (`environment.produccion` es false) para no servir versiones viejas
+    // mientras se trabaja con `ng serve`.
+    //
+    // Chart.js no se registra acá: se registra en `Estadisticas`, que es una
+    // ruta diferida (ver pages/dashboard/estadisticas/graficos.ts).
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: environment.produccion,
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
   ],
 };

@@ -12,19 +12,20 @@
           <span aria-hidden="true">·</span>
         }
         <time [attr.datetime]="publicacion().createdAt ?? null" [title]="fechaTooltip()">
-          {{ fecha() }}
+          {{ publicacion().createdAt | tiempoRelativo }}
         </time>
       </p>
     </div>
 
-    @if (puedeEliminar()) {
+    <!-- Sprint 6: autor o administrador, resuelto por la directiva. -->
+    <ng-container *appPuedeModerar="publicacion().usuario">
       @if (confirmando()) {
-        <div class="publicacion__confirmacion">
+        <div class="publicacion__confirmacion" (appClicFuera)="cancelar()">
           <span class="publicacion__pregunta">¿Eliminar?</span>
           <button
             class="boton boton--peligro boton--chico"
             type="button"
-            [disabled]="ocupada()"
+            [appOcupado]="ocupada()"
             (click)="confirmarBorrado()"
           >
             {{ ocupada() ? 'Eliminando…' : 'Sí, borrar' }}
@@ -32,7 +33,7 @@
           <button
             class="boton boton--secundario boton--chico"
             type="button"
-            [disabled]="ocupada()"
+            [appOcupado]="ocupada()"
             (click)="cancelar()"
           >
             No
@@ -42,13 +43,13 @@
         <button
           class="enlace-eliminar"
           type="button"
-          [disabled]="ocupada()"
+          [appOcupado]="ocupada()"
           (click)="pedirConfirmacion()"
         >
           Eliminar
         </button>
       }
-    }
+    </ng-container>
   </header>
 
   <a
@@ -56,7 +57,9 @@
     [routerLink]="['/publicaciones', publicacion().id]"
     >{{ publicacion().titulo }}</a
   >
-  <p class="publicacion__texto">{{ publicacion().descripcion }}</p>
+  <p class="publicacion__texto">
+    {{ publicacion().descripcion | truncarDescripcion: !!publicacion().imagenUrl }}
+  </p>
 
   @if (publicacion().nombreComun || publicacion().nombreCientifico) {
     <p class="publicacion__ave">
@@ -85,12 +88,12 @@
       type="button"
       [class.me-gusta--activo]="publicacion().likeado"
       [attr.aria-pressed]="publicacion().likeado"
-      [attr.aria-label]="'Me gusta (' + publicacion().cantidadLikes + ')'"
-      [disabled]="ocupada()"
+      [attr.aria-label]="'Me gusta (' + (publicacion().cantidadLikes | numero) + ')'"
+      [appOcupado]="ocupada()"
       (click)="meGusta.emit()"
     >
       <span class="me-gusta__icono" aria-hidden="true">{{ publicacion().likeado ? '♥' : '♡' }}</span>
-      <span class="me-gusta__contador">{{ publicacion().cantidadLikes }}</span>
+      <span class="me-gusta__contador">{{ publicacion().cantidadLikes | numero }}</span>
     </button>
   </footer>
 

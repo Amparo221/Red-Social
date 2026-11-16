@@ -78,8 +78,6 @@
     @for (publicacion of publicaciones(); track publicacion.id) {
       <app-publicacion-card
         [publicacion]="publicacion"
-        [idUsuario]="idUsuario()"
-        [esAdministrador]="esAdministrador()"
         [ocupada]="estaOcupada(publicacion)"
         (meGusta)="alternarLike(publicacion)"
         (eliminar)="alEliminar(publicacion)"

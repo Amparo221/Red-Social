@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/index.html",
+          "/manifest.webmanifest",
+          "/*.css",
+          "/*.js",
+          "/identibird.png",
+          "/identibird-32.png",
+          "/identibird-180.png",
+          "/feather.png",
+          "/avatar-por-defecto.svg"
+        ]
+      }
+    },
+    {
+      "name": "imagenes",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": ["/**/*.(svg|png|jpg|jpeg|webp|gif|ico|woff|woff2)"]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "fotos-cloudinary",
+      "urls": ["https://res.cloudinary.com/**"],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 100,
+        "maxAge": "7d",
+        "timeout": "5s"
+      }
+    }
+  ],
+  "navigationUrls": ["/**", "!/**/*.*"]
+}
