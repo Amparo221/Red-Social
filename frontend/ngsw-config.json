@@ -39,6 +39,16 @@
         "maxAge": "7d",
         "timeout": "5s"
       }
+    },
+    {
+      "name": "api-feed",
+      "urls": ["https://bird-app-lacerce.vercel.app/api"],
+      "cacheConfig": {
+        "strategy": "performance",
+        "maxSize": 50,
+        "maxAge": "1h",
+        "timeout": "5s"
+      }
     }
   ],
   "navigationUrls": ["/**", "!/**/*.*"]
