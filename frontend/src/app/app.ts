@@ -2,13 +2,14 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { catchError, finalize, forkJoin, of, timer } from 'rxjs';
 import { environment } from '../environments/environment';
+import { AvisoSesion401 } from './compartidos/aviso-sesion-401/aviso-sesion-401';
 import { ModalSesion } from './compartidos/modal-sesion/modal-sesion';
 import { AuthService } from './core/services/auth.service';
 import { esAdministrador, urlAvatar } from './core/models/usuario.model';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet, ModalSesion],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, ModalSesion, AvisoSesion401],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })

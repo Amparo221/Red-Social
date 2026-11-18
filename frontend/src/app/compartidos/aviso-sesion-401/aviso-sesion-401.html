@@ -1,0 +1,17 @@
+@if (aviso.avisando()) {
+  <div class="aviso-401__fondo">
+    <div class="aviso-401" role="alert" aria-live="assertive" aria-labelledby="titulo-401">
+      <p class="aviso-401__codigo">Error 401 · No autorizado</p>
+      <h2 class="aviso-401__titulo" id="titulo-401">Tu sesión expiró</h2>
+      <p class="aviso-401__texto">{{ mensaje() }}</p>
+      <p class="aviso-401__texto">
+        Te llevamos al login en
+        <strong class="aviso-401__cuenta">{{ aviso.segundosRestantes() }}</strong>
+        s para que generes un token nuevo.
+      </p>
+      <button class="boton boton--primario" type="button" (click)="aviso.irAhora()">
+        Ir al login ahora
+      </button>
+    </div>
+  </div>
+}

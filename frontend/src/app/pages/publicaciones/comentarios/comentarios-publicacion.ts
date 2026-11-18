@@ -1,4 +1,4 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { OcupadoDirective } from '../../../core/directives/ocupado.directive';
 import { PuedeModerarDirective } from '../../../core/directives/puede-moderar.directive';
 import {
@@ -54,7 +54,11 @@ export class ComentariosPublicacion {
 
   protected readonly comentarios = signal<Comentario[]>([]);
   protected readonly total = signal(0);
-  protected readonly hayMas = signal(false);
+  /**
+   * Se deriva de lo que se ve contra el total (igual que el feed): después de
+   * crear o borrar un comentario no hay que acordarse de recalcularlo.
+   */
+  protected readonly hayMas = computed(() => this.comentarios().length < this.total());
   protected readonly cargando = signal(true);
   protected readonly cargandoMas = signal(false);
   protected readonly errores = signal<string[]>([]);
@@ -74,12 +78,6 @@ export class ComentariosPublicacion {
   /** Largo máximo que acepta el backend, para los contadores. */
   protected readonly maximoTexto = MAXIMO_TEXTO_COMENTARIO;
 
-  /**
-   * Cuántos comentarios ya se pidieron al servidor. Se usa como `offset` del
-   * próximo "cargar más"; avanza con la respuesta, no con lo que se ve.
-   */
-  private offsetServidor = 0;
-
   ngOnInit(): void {
     this.cargar();
   }
@@ -88,7 +86,6 @@ export class ComentariosPublicacion {
   protected cargar(): void {
     this.errores.set([]);
     this.cargando.set(true);
-    this.offsetServidor = 0;
 
     this.publicacionesService
       .listarComentarios(this.idPublicacion(), {
@@ -99,14 +96,11 @@ export class ComentariosPublicacion {
         next: (listado) => {
           this.comentarios.set(listado.comentarios);
           this.total.set(listado.total);
-          this.hayMas.set(listado.hayMas);
-          this.offsetServidor = listado.offset + listado.comentarios.length;
           this.cargando.set(false);
         },
         error: (error: unknown) => {
           this.comentarios.set([]);
           this.total.set(0);
-          this.hayMas.set(false);
           this.errores.set(mensajesDeError(error, 'sesion'));
           this.cargando.set(false);
         },
@@ -119,7 +113,10 @@ export class ComentariosPublicacion {
       return;
     }
 
-    const offset = this.offsetServidor;
+    // `offset` = cantidad ya mostrada (igual que el feed): si se borró un
+    // comentario, la próxima página no se saltea al que quedó en el medio.
+    const offset = this.comentarios().length;
+
     this.errores.set([]);
     this.cargandoMas.set(true);
 
@@ -140,8 +137,6 @@ export class ComentariosPublicacion {
             ];
           });
           this.total.set(listado.total);
-          this.hayMas.set(listado.hayMas);
-          this.offsetServidor = listado.offset + listado.comentarios.length;
           this.cargandoMas.set(false);
         },
         error: (error: unknown) => {

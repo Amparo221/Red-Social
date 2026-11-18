@@ -159,8 +159,10 @@ sesión.
 - El JWT dura lo que indique `JWT_EXPIRES_IN` del backend (por defecto **900 s =
   15 minutos**). Cambiarlo en el `.env` obliga a reiniciar el backend, y en Vercel
   a cargar la variable y **volver a desplegar** (ver `../backend/README.md`).
-  Cuando una ruta protegida responde `401`, el interceptor cierra la sesión y
-  navega a `/login?sesion=expirada`; el login arranca mostrando esa alerta.
+  Cuando una ruta protegida responde `401`, el interceptor cierra la sesión,
+  muestra el error durante 2 s (`SesionExpiradaService` + `compartidos/aviso-sesion-401/`)
+  y recién entonces navega a `/login?sesion=expirada`; el login arranca mostrando
+  esa alerta.
 - El **splash de arranque** valida el token guardado con `GET /auth/autorizar`, y
   un **cronómetro** derivado del `exp` del JWT avisa antes del vencimiento y
   permite extender la sesión (`POST /auth/refrescar`). Los tiempos los manda el
@@ -183,7 +185,8 @@ devuelve `{ expiracionSegundos, avisoSegundos }` calculados en el backend desde
 | Splash | `app.ts` / `app.html` / `app.css` (`.splash`) | Si hay sesión guardada, tapa la pantalla mientras `GET /auth/autorizar` valida el token. `forkJoin` espera **dos** cosas: la validación y el mínimo de `environment.cargaMinimaMs` (2 s en desarrollo, 0 en producción), y el `finalize` lo apaga incluso si la validación falla. Sin sesión no aparece |
 | Cronómetro | `core/services/sesion-timer.service.ts` | Deriva los segundos restantes del **`exp` del JWT** (`core/utils/jwt.util.ts`) con un `setInterval` de 1 s que se reinicia solo cuando cambia el token, así un F5 o un token renovado no lo desincronizan |
 | Aviso | `compartidos/modal-sesion/` | Modal (`role="dialog"`, foco en el botón principal) que aparece cuando quedan `avisoSegundos` o menos. **Extender sesión** → `POST /auth/refrescar`; **Cerrar sesión** → logout. Vive en el shell (`app.html`) pero se monta con `@if (!cargandoInicial())`: el reloj no existe hasta que el splash terminó de validar el token, así el modal (z-index 200) no tapa el splash (z-index 100) ni dispara el aviso por un `exp` que el backend todavía no confirmó |
-| Vencimiento | `sesion-timer.service.ts` | Al llegar a 0 (o si el refresco falla) cierra la sesión y navega a `/login?sesion=expirada`, el mismo destino que usa el 401 |
+| Vencimiento | `sesion-timer.service.ts` | Al llegar a 0 (o si el refresco falla) cierra la sesión y delega en `SesionExpiradaService`: el mismo cartel de 2 s y el mismo destino (`/login?sesion=expirada`) que usa el 401 |
+| Error 401 | `core/services/sesion-expirada.service.ts` + `compartidos/aviso-sesion-401/` | Cartel (`role="alert"`) con `Error 401 · No autorizado` y cuenta regresiva de `DEMORA_REDIRECCION_MS` (2 s); después navega a `/login?sesion=…`. Varios 401 simultáneos producen un solo aviso, y el botón "Ir al login ahora" saltea la espera |
 
 `AuthService` suma `validarSesion()`, `refrescar()` y `politicaSesion()` (esta
 última cachea la respuesta: los tiempos no cambian en caliente). Si
@@ -214,7 +217,8 @@ src/
    │  ├─ services/usuarios.service.ts listar(), crear() (multipart), deshabilitar(), cambiarEstado() (sólo administradores)
    │  ├─ services/estadisticas.service.ts consultar() (rango + agrupación + límite, sólo administradores)
    │  ├─ services/sesion-timer.service.ts reloj de la sesión (exp del JWT): aviso, extender, expirar
-   │  ├─ interceptors/auth.interceptor.ts Bearer del JWT + 401 → logout (sesión expirada o cuenta deshabilitada)
+   │  ├─ services/sesion-expirada.service.ts cartel del 401: espera 2 s y navega al login
+   │  ├─ interceptors/auth.interceptor.ts Bearer del JWT + 401 → cierra sesión y avisa (sesión expirada o cuenta deshabilitada)
    │  ├─ pipes/truncar-descripcion.pipe.ts recorta la descripción cuando la tarjeta muestra foto (Sprint 6)
    │  ├─ pipes/tiempo-relativo.pipe.ts "hace 5 min" / "ayer" en las plantillas (Sprint 6)
    │  ├─ pipes/numero.pipe.ts      contadores con separador de miles (Sprint 6)
@@ -229,6 +233,7 @@ src/
    │  ├─ guards/sesion.guard.ts   protege /publicaciones y /inicio
    │  └─ guards/admin.guard.ts    protege /dashboard (perfil administrador)
    ├─ compartidos/modal-sesion/   aviso de sesión por vencer (cuenta regresiva, extender, cerrar)
+   ├─ compartidos/aviso-sesion-401/ cartel del error 401 (2 s) antes de volver al login
    └─ pages/
       ├─ publicaciones/          feed: estado, filtros y paginación (+ spec)
       │  ├─ publicacion-card/    tarjeta: autor, foto, me gusta y borrar en dos pasos

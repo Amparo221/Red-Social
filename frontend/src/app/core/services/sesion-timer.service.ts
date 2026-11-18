@@ -4,6 +4,7 @@ import { finalize } from 'rxjs';
 import { POLITICA_SESION_POR_DEFECTO } from '../models/usuario.model';
 import { vencimientoDelToken } from '../utils/jwt.util';
 import { AuthService } from './auth.service';
+import { SesionExpiradaService } from './sesion-expirada.service';
 
 /**
  * Reloj de la sesión (Sprint 4).
@@ -18,6 +19,7 @@ import { AuthService } from './auth.service';
 export class SesionTimerService {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly sesionExpirada = inject(SesionExpiradaService);
 
   private readonly restantes = signal(0);
   private readonly aviso = signal(POLITICA_SESION_POR_DEFECTO.avisoSegundos);
@@ -106,14 +108,18 @@ export class SesionTimerService {
     void this.router.navigate(['/login']);
   }
 
-  /** Vencimiento (o refresco fallido): cierra la sesión y avisa en el login. */
+  /**
+   * Vencimiento (o refresco fallido): cierra la sesión y deja que el cartel del
+   * 401 avise y navegue al login (mismo camino que el `authInterceptor`, así
+   * los dos finales de sesión se comportan igual).
+   */
   private expirar(): void {
-    // Varias pestañas pueden llegar a cero a la vez: sólo la primera navega.
+    // Varias pestañas pueden llegar a cero a la vez: sólo la primera avisa.
     if (!this.auth.estaLogueado()) {
       return;
     }
 
     this.auth.cerrarSesion();
-    void this.router.navigate(['/login'], { queryParams: { sesion: 'expirada' } });
+    this.sesionExpirada.avisar('expirada');
   }
 }

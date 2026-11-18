@@ -6,6 +6,7 @@ import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import type { Sesion } from '../models/usuario.model';
 import { AuthService, CLAVE_SESION } from './auth.service';
+import { DEMORA_REDIRECCION_MS, SesionExpiradaService } from './sesion-expirada.service';
 import { SesionTimerService } from './sesion-timer.service';
 
 const AHORA = new Date('2026-11-11T12:00:00.000Z');
@@ -48,6 +49,7 @@ describe('SesionTimerService', () => {
   let appRef: ApplicationRef;
   let auth: AuthService;
   let timer: SesionTimerService;
+  let avisoSesion: SesionExpiradaService;
   let navegar: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -66,6 +68,7 @@ describe('SesionTimerService', () => {
     navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     timer = TestBed.inject(SesionTimerService);
+    avisoSesion = TestBed.inject(SesionExpiradaService);
     // Los `effect` corren en un tick de la aplicación (no hay componente que
     // los dispare en este test).
     appRef.tick();
@@ -91,14 +94,22 @@ describe('SesionTimerService', () => {
     expect(timer.avisando()).toBe(true);
   });
 
-  it('al llegar a cero cierra la sesión y manda al login con el aviso', () => {
+  it('al llegar a cero cierra la sesión y deja el aviso del 401 antes del login', () => {
     vi.advanceTimersByTime(30_000);
 
     expect(timer.segundosRestantes()).toBe(0);
     expect(auth.estaLogueado()).toBe(false);
+
+    // El cartel del 401 aparece en el acto; la navegación espera los 2 s.
+    expect(avisoSesion.avisando()).toBe(true);
+    expect(navegar).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(DEMORA_REDIRECCION_MS);
+
     expect(navegar).toHaveBeenCalledWith(['/login'], {
       queryParams: { sesion: 'expirada' },
     });
+    expect(avisoSesion.avisando()).toBe(false);
   });
 
   it('extender pide un token nuevo y reinicia el reloj', () => {
@@ -127,6 +138,11 @@ describe('SesionTimerService', () => {
       .flush({ message: 'No autorizado' }, { status: 401, statusText: 'Unauthorized' });
 
     expect(auth.estaLogueado()).toBe(false);
+    expect(avisoSesion.avisando()).toBe(true);
+    expect(navegar).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(DEMORA_REDIRECCION_MS);
+
     expect(navegar).toHaveBeenCalledWith(['/login'], {
       queryParams: { sesion: 'expirada' },
     });
@@ -136,6 +152,7 @@ describe('SesionTimerService', () => {
     timer.salir();
 
     expect(auth.estaLogueado()).toBe(false);
+    expect(avisoSesion.avisando()).toBe(false);
     expect(navegar).toHaveBeenCalledWith(['/login']);
   });
 

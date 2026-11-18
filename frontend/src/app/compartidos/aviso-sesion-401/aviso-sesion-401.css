@@ -1,0 +1,50 @@
+/* Mismo velo que el modal de "sesión por vencer", pero por encima: si el reloj
+   llegó a cero mientras se veía ese modal, el 401 tapa la situación anterior. */
+.aviso-401__fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(3, 27, 45, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.aviso-401 {
+  width: 100%;
+  max-width: 26rem;
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--blanco);
+  border: 1px solid var(--error-borde);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(3, 27, 45, 0.28);
+}
+
+.aviso-401__codigo {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--error);
+}
+
+.aviso-401__titulo {
+  margin: 0 0 0.6rem;
+  font-size: 1.2rem;
+  color: var(--marino-900);
+}
+
+.aviso-401 p {
+  margin: 0 0 1.25rem;
+  color: var(--texto-suave);
+  line-height: 1.5;
+}
+
+/* Números de ancho fijo: la cuenta no baila mientras baja. */
+.aviso-401__cuenta {
+  color: var(--error);
+  font-variant-numeric: tabular-nums;
+}

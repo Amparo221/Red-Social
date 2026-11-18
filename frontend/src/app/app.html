@@ -81,6 +81,12 @@
   <app-modal-sesion />
 }
 
+<!-- Error 401 (token vencido o cuenta deshabilitada): se muestra 2 s con la
+     cuenta regresiva y recién ahí se navega al login. Va fuera del
+     `@if (!cargandoInicial())` porque el 401 también puede llegar durante el
+     splash (token guardado ya vencido) y hay que poder leerlo igual. -->
+<app-aviso-sesion-401 />
+
 <footer class="pie">
   <div class="contenedor"><strong>IdentiBird</strong> · Sprint 6 · Angular + NestJS</div>
 </footer>
